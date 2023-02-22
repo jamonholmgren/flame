@@ -37,6 +37,7 @@ ${sourceFileContents}
 // Now the same file using ${to} instead of ${from}.
 // Matches the original code as closely as possible.
 // Updates all relevant types and imports.
+// Only outputs one copy of the file and doesn't repeat the file.
 ${recipe.finalNotes}
 
 `

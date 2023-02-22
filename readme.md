@@ -1,10 +1,13 @@
 # flame CLI
 
-A CLI for flame.
+flame is our CLI for interacting with OpenAI and doing codemods and codegen.
 
-## Customizing your CLI
-
-Check out the documentation at https://github.com/infinitered/gluegun/tree/master/docs.
+```
+yarn
+yarn link
+export OPENAI_API_KEY=INSERTKEYHERE
+flame --help
+```
 
 ## Publishing to NPM
 
@@ -22,5 +25,4 @@ $ npm publish
 
 # License
 
-MIT - see LICENSE
-
+Proprietary.
