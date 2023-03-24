@@ -18,7 +18,7 @@ async function run(argv) {
       'semver',
       'system',
       'prompt',
-      'http',
+      // 'http',
       'template',
       'patching',
       'package-manager',

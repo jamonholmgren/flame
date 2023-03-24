@@ -1,8 +1,8 @@
 import { GluegunCommand } from 'gluegun'
-import { openAI } from '../openai/openai'
+import { openAI } from '../ai/openai'
 
 const command: GluegunCommand = {
-  name: 'flame',
+  name: 'convert',
   run: async (toolbox) => {
     const { print } = toolbox
 
@@ -34,8 +34,7 @@ ${sourceFileContents}
 
 // ===
 
-// Now the same file using ${to} instead of ${from}.
-// Matches the original code as closely as possible.
+// Now the same file using ${to} instead of ${from}. Matches the original code as closely as possible.
 // Updates all relevant types and imports.
 // Only outputs one copy of the file and doesn't repeat the file.
 ${recipe.finalNotes}
