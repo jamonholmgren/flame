@@ -1,5 +1,5 @@
 import { GluegunCommand } from 'gluegun'
-import { claude } from '../ai/claude'
+import { claudePrompt } from '../ai/claude'
 
 // parse out all the files that were changed in the diff, returning an array of file paths and names
 function parseGitDiff(diffString: string) {
@@ -117,7 +117,7 @@ not be removed or changed.
       print.info(diff)
 
       try {
-        var response = await claude({ prompt })
+        var response = await claudePrompt({ prompt })
       } catch (e) {
         print.error(e)
         print.error(e.response.data.error)

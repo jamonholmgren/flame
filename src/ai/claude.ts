@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 let api_key = process.env.CLAUDE_API_KEY
-export async function claude({ prompt }: { prompt: string }) {
+export async function claudePrompt({ prompt }: { prompt: string }) {
   if (!api_key) {
     console.log('Please export your CLAUDE_API_KEY before using this.')
 
