@@ -38,7 +38,7 @@ export const chatGPTPrompt = async ({
     response = await ai.createChatCompletion({
       model: 'gpt-3.5-turbo',
       messages: prompts,
-      max_tokens: 3000,
+      max_tokens: 2000,
       temperature: 0,
       // top_p: 1,
       // presence_penalty: 0,
@@ -51,7 +51,11 @@ export const chatGPTPrompt = async ({
       user: process.env.USER,
     })
   } catch (e) {
-    return "I'm sorry, I had an error. Please try again."
+    console.log('---PROMPT---')
+    console.dir(prompts)
+    console.log('---ERROR---')
+    console.dir(e.response.data.error)
+    return `I'm sorry, I had an error. Please try again.\n\n`
   }
 
   return response.data.choices

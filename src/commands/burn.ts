@@ -4,7 +4,6 @@
 
 import { GluegunCommand, GluegunFilesystem } from 'gluegun'
 
-// import { claudePrompt } from '../ai/claude'
 import { chatGPTPrompt } from '../ai/openai'
 import { ChatCompletionRequestMessage } from 'openai'
 
@@ -13,30 +12,11 @@ const command: GluegunCommand = {
   run: async (toolbox) => {
     const { print, filesystem, system, prompt } = toolbox
 
-    // // first, ask the user which AI they want to use
-    // const aiProvider = await prompt.ask({
-    //   type: 'select',
-    //   name: 'ai',
-    //   message: 'Which AI do you want to use?',
-    //   choices: ['ChatGPT 3.5', 'ChatGPT 4', 'Claude'],
-    // })
-
-    // verify the user is in the source folder by showing them the path and asking if it's okay
-    const currentPath = filesystem.cwd()
-    const okay = await prompt.confirm(
-      `You're in ${currentPath}. All files will be output in here. Is this okay?`
-    )
-
-    if (!okay) {
-      print.error('Aborting.')
-      process.exit(1)
-    }
-
     // start the prompt loop
     let prompts: ChatCompletionRequestMessage[] = [
       {
         content:
-          'Use HTML, CSS, and JavaScript (via TypeScript). Assume Parcel will be used to compile and serve the app. Use small functions and files. Include all necessary code. Only return one file at a time. I will prompt when I want the next file. Use this format:\n\ncreate file: <filename>\n<contents here>\n\nupdate file: <filename>\n<describe changes here>\n\n',
+          'Use HTML, CSS, and JavaScript (via TypeScript). Assume Parcel will be used to compile and serve the app. All links to JS files should use the .ts extension. All JS files should be TypeScript. Use small functions and files. Use this format:\n\nfile: <filename1>\n\nfile: <filename2>\n\nDo not include files that do not need to be created or updated.\n\nDo not include file contents yet; I will ask for the contents when ready.\n\n',
         role: 'user',
       },
     ]
@@ -47,8 +27,7 @@ const command: GluegunCommand = {
         await prompt.ask({
           type: 'input',
           name: 'prompt',
-          message:
-            'What would you like to generate today? (apply: apply last file changes, end: exit)\n\n',
+          message: 'What would you like to generate today?\n\n',
         })
       ).prompt
 
@@ -99,8 +78,18 @@ const command: GluegunCommand = {
         continue
       }
 
+      if (promptText === 'current') {
+        console.log('Current prompts:', prompts)
+        continue
+      }
+
+      if (promptText === 'reset') {
+        prompts = [prompts[0]]
+        continue
+      }
+
       prompts.push({
-        content: promptText,
+        content: `${promptText}\n\nWhat files need to be changed to do this? Use this format:\n\nfile: <filename1>\nfile: <filename2>\n\n`,
         role: 'user',
       })
 
@@ -116,54 +105,57 @@ const command: GluegunCommand = {
       // apply the changes
       const lastPrompt = response
 
+      // add the last prompt to the prompts array
+      prompts.push({
+        content: lastPrompt,
+        role: 'assistant',
+      })
+
       // use parseInstructions to loop through any files that require changes and apply them, one at a time.
-      const instructions = await parseInstructions(lastPrompt)
+      // const instructions = await parseInstructions(lastPrompt)
+      const changedFiles = parseFileChanges(lastPrompt)
+
+      print.info(`Files to be changed: ${changedFiles.join(', ')}\n\n`)
+
+      // todo: add contents of existing files that will be affected to a temporary prompts array
 
       // for each instruction key, apply it
-      for (const lastPromptAction of Object.keys(instructions)) {
-        let contents = instructions[lastPromptAction]
-
-        if (lastPromptAction.includes('create file: ')) {
-          // create file -- filename is after "create file: "
-          const filename = lastPromptAction.split('create file: ')[1]
-          // contents are the rest of the lines
-
-          contents = contents.trim()
-
-          // trim backticks from the beginning and end of the contents if they exist
-          if (contents.startsWith('```')) contents = contents.slice(3).trim()
-          if (contents.endsWith('```')) contents = contents.slice(0, -3).trim()
-
-          // make sure the user is okay with this:
-          const okay = await prompt.confirm(
-            `Are you sure you want to create ${filename} with the following contents?\n\n${contents}`
-          )
-
-          if (!okay) continue
-
-          // write the file
-          await filesystem.writeAsync(filename, contents)
-        } else if (lastPromptAction.includes('update file: ')) {
+      for (const lastPromptAction of changedFiles) {
+        if (lastPromptAction.startsWith('file: ')) {
           // read the existing file, if it exists
-          const filename = lastPromptAction.split('update file: ')[1]
-          const changes = contents
+          const filename = lastPromptAction.split('file: ')[1]
 
           // does that file exist?
           const exists = await filesystem.existsAsync(filename)
 
           let existingFileContents = ''
+          let updatePrompt = ''
           if (!exists) {
             print.warning(`File ${filename} does not exist. It'll be created.`)
+            updatePrompt = `What should be the contents of ${filename}? Just the contents, nothing else. Do not include backticks.`
           } else {
             // read the file
             existingFileContents = await filesystem.readAsync(filename)
+
+            // if the file is too large, we won't be able to provide it to the AI
+            if (existingFileContents.length > 10000) {
+              print.warning(
+                `File ${filename} is too large to provide to the AI. We'll provide some of it.`
+              )
+              existingFileContents =
+                existingFileContents.slice(0, 9000) +
+                '\n// ... truncated for brevity ...'
+            }
+
+            updatePrompt = `For this file:\n\n\`\`\`${existingFileContents}\`\`\`\n\nReturn just the new file contents with the changes requested. If no changes are necessary, still return the file contents.\n`
           }
 
           // now use openAI to modify the file
           let response = await chatGPTPrompt({
             prompts: [
+              ...prompts,
               {
-                content: `For this file:\n\n\`\`\`${existingFileContents}\`\`\`\n\nMake these changes:\n\n\`\`\`${changes}\`\`\`\n\nReturn just the new file contents. If no changes are necessary, still return the file contents.\n`,
+                content: updatePrompt,
                 role: 'user',
               },
             ],
@@ -171,9 +163,13 @@ const command: GluegunCommand = {
 
           response = response.trim()
 
-          // trim backticks from the beginning and end of the response if they exist
-          if (response.startsWith('```')) response = response.slice(3)
-          if (response.endsWith('```')) response = response.slice(0, -3)
+          // trim backticks from the beginning and end of the response if they exist, including anything else on that line
+          if (response.startsWith('```')) {
+            response = response.split('\n').slice(1).join('\n')
+          }
+          if (response.endsWith('```')) {
+            response = response.split('\n').slice(0, -1).join('\n')
+          }
 
           // make sure the user is okay with this:
           const okay = await prompt.confirm(
@@ -268,4 +264,13 @@ function parseInstructions(example) {
   }
 
   return parsedInstructions
+}
+
+function parseFileChanges(example) {
+  const instructionPattern = /(?:file:)\s*[a-zA-Z0-9_\-/.]+/g
+  const instructions = example.match(instructionPattern)
+
+  if (!instructions) return []
+
+  return instructions.map((i) => i.trim())
 }
