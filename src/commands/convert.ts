@@ -1,5 +1,6 @@
 import { GluegunCommand } from 'gluegun'
 import { openAI } from '../ai/openai'
+import { ChatCompletionRequestMessage } from 'openai'
 
 const command: GluegunCommand = {
   name: 'convert',
@@ -17,52 +18,78 @@ const command: GluegunCommand = {
 
     // const additionalInstructions = toolbox.parameters.third || ''
 
+    // show a spinner
+    print.info(`\nConverting ${sourceFile} from ${from} to ${to}\n`)
+
+    const spinner = print.spin(`Reading ${sourceFile}`)
+    spinner.start()
+
     // read the source file
     const sourceFileContents = await toolbox.filesystem.readAsync(sourceFile)
 
-    // TODO: ensure there's a recipe for this conversion
+    // update spinner
+    spinner.succeed()
+    spinner.text = `Loading ${from}-to-${to} recipe`
+    spinner.start()
 
-    // load the recipe
-    const { recipe } = require(`../recipes/${from}-to-${to}`)
+    // ensure there's a recipe for this conversion
+    try {
+      var { recipe } = require(`../recipes/${from}-to-${to}`)
+    } catch (e) {
+      print.error(`No recipe found for converting from ${from} to ${to}`)
+      return
+    }
 
-    const fullPrompt = `
-${recipe.prompt}
+    // check if shouldConvert the file
+    if (recipe.shouldConvert && !recipe.shouldConvert(sourceFileContents)) {
+      spinner.succeed()
+      print.error(
+        `\nThis file does not need to be converted from ${from} to ${to}.`
+      )
+      return
+    }
 
-// Now here is a React Native (typescript) file using ${from} (look for "// ===" to delimit after the end of the file):
+    // update spinner
+    spinner.succeed()
+    spinner.text = `ChatGPT is converting ${sourceFile} from ${from} to ${to}`
+    spinner.start()
 
-${sourceFileContents}
-
-// ===
-
-// Now the same file using ${to} instead of ${from}. Matches the original code as closely as possible.
-// Updates all relevant types and imports.
-// Only outputs one copy of the file and doesn't repeat the file.
-${recipe.finalNotes}
-
-`
-
-    // console.log(fullPrompt)
+    const messages: ChatCompletionRequestMessage[] = [
+      {
+        content: recipe.prompt,
+        role: 'system',
+      },
+      {
+        content: `Here is the source file:\n\n\`\`\`\n${sourceFileContents}\n\`\`\``,
+        role: 'system',
+      },
+      {
+        content: recipe.finalNotes,
+        role: 'system',
+      },
+    ]
 
     const openai = await openAI()
     try {
-      var response = await openai.createCompletion({
-        model: 'code-davinci-002',
-        prompt: fullPrompt,
+      var response = await openai.createChatCompletion({
+        model: 'gpt-4',
+        messages,
         max_tokens: 3000,
         temperature: 0,
         // top_p: 1,
         // presence_penalty: 0,
         // frequency_penalty: 0,
         // best_of: 1, // test a couple options
-        n: 1, // return the best result
+        // n: 1, // return the best result
         stream: false,
-        stop: ['```'],
+        // stop: ['```'],
         // get current OS username and use that here to prevent spamming
         user: process.env.USER,
       })
     } catch (e) {
       print.error(e)
       print.error(e.response.data.error)
+      return
     }
 
     if (!response?.data?.choices) {
@@ -70,10 +97,23 @@ ${recipe.finalNotes}
       return
     }
 
-    const revampedCode = response.data.choices[0].text
+    // update spinner
+    spinner.succeed()
+    spinner.text = `Writing updated code to ${sourceFile}`
+    spinner.start()
+
+    const revampedCodeMessage = response.data.choices[0].message.content
+
+    // strip any backticks before and after the code block
+    const revampedCode = revampedCodeMessage
+      .replace(/^```/, '')
+      .replace(/```$/, '')
 
     // now write that back to the source file
     await toolbox.filesystem.writeAsync(sourceFile, revampedCode)
+
+    // update spinner
+    spinner.succeed()
 
     // success
     print.success(`Converted ${from} to ${to} in ${sourceFile}!`)

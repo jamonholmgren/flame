@@ -17,6 +17,7 @@ export async function openAI() {
     _openAI = new OpenAIApi(
       new Configuration({
         apiKey: api_key,
+        organization: 'org-wGbmhq3o3vYMbSrhmW6TA88N', // Jamon's personal org
       })
     )
     // const response = await _openAI.listModels()
@@ -40,6 +41,7 @@ export const chatGPTPrompt = async ({
       messages: prompts,
       max_tokens: 2000,
       temperature: 0,
+
       // top_p: 1,
       // presence_penalty: 0,
       // frequency_penalty: 0,

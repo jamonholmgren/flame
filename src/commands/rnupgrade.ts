@@ -119,7 +119,7 @@ not general instructions.
       print.info(diffPrompt)
 
       try {
-        var instructions = await claude({
+        var instructions = await claudePrompt({
           prompt: diffPrompt,
           backticks: false,
         })

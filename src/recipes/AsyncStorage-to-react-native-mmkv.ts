@@ -47,6 +47,7 @@ const mmkvStorageHandler = {
 }
 Reactotron.setAsyncStorageHandler(mmkvStorageHandler)
 
+// Now here is a TypeScript) file using AsyncStorage (look for "// ===" to delimit after the end of the file):
 
 `,
   finalNotes: `

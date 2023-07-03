@@ -11,7 +11,7 @@ async function run(argv) {
     .help() // provides default for help, h, --help, -h
     .version() // provides default for version, v, --version, -v
     .exclude([
-      'meta',
+      // 'meta',
       'strings',
       // 'print',
       // 'filesystem',
