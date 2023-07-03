@@ -1,5 +1,5 @@
 import { GluegunCommand } from 'gluegun'
-import { claude } from '../ai/claude'
+import { claudePrompt } from '../ai/claude'
 
 // parse out all the files that were changed in the diff, returning an array of file paths and names
 function parseGitDiff(diffString: string) {
@@ -152,7 +152,7 @@ Return the new file in a code block, formatted and indented correctly.
 `
 
       try {
-        var converted = await claude({
+        var converted = await claudePrompt({
           prompt: conversionPrompt,
           backticks: true,
         })
