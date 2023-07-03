@@ -1,7 +1,13 @@
 import axios from 'axios'
 
 let api_key = process.env.CLAUDE_API_KEY
-export async function claude({ prompt }: { prompt: string }) {
+export async function claude({
+  prompt,
+  backticks,
+}: {
+  prompt: string
+  backticks?: boolean
+}) {
   if (!api_key) {
     console.log('Please export your CLAUDE_API_KEY before using this.')
 
@@ -11,9 +17,11 @@ export async function claude({ prompt }: { prompt: string }) {
   const response = await axios.post(
     'https://api.anthropic.com/v1/complete',
     {
-      prompt: `\n\nHuman: ${prompt}\n\nAssistant: \n\`\`\`\n`,
+      prompt: `\n\nHuman: ${prompt}\n\nAssistant: ${
+        backticks ? '\n```\n' : ''
+      }`,
       model: 'claude-v1',
-      max_tokens_to_sample: 11000,
+      max_tokens_to_sample: 15000,
       stop_sequences: ['\n```\n'],
     },
     {

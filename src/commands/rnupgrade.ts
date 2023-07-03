@@ -28,7 +28,8 @@ function parseGitDiff(diffString: string) {
 const command: GluegunCommand = {
   name: 'rnupgrade',
   run: async (toolbox) => {
-    const { print, filesystem, http } = toolbox
+    const { print, filesystem, http, parameters } = toolbox
+    const { options } = parameters
 
     // first parameter is the version we want to upgrade to
     const targetVersion = toolbox.parameters.first
@@ -68,6 +69,15 @@ const command: GluegunCommand = {
 
     const files = parseGitDiff(diff)
 
+    // if they pass --list, just list the files and exit
+    if (options.list) {
+      for (const file in files) {
+        if (filter && !file.includes(filter)) continue
+        print.success(file)
+      }
+      return
+    }
+
     // loop through each file and ask OpenAI to convert it using the diff for that file
     for (const file in files) {
       const diff = files[file]
@@ -93,38 +103,66 @@ const command: GluegunCommand = {
       if (!sourceFileContents) continue
 
       // Now use OpenAI to convert the file
-      const prompt = `
-
+      const diffPrompt = `
 Using this git diff of a typical ${file} in a React Native ${currentVersion} app being upgraded to ${targetVersion}:
 
 \`\`\`
 ${diff}
 \`\`\`
 
-Convert this file, ${localFile}, from React Native ${currentVersion} to React Native ${targetVersion}, using the git diff
-as a guide for what changes to make, keeping in mind that this file has further customizations that should be kept the same
-except where the diff matches against specific code in the file. The file currently looks like this:
+... explain to me in bullet points what needs to be done to the file, assuming that the file we're
+applying it to might have customizations we would want to keep. Assume your audience is yourself,
+for a future chat session where you will not have any other context. Give specific instructions,
+not general instructions.
+`
+
+      print.info(diffPrompt)
+
+      try {
+        var instructions = await claude({
+          prompt: diffPrompt,
+          backticks: false,
+        })
+      } catch (e) {
+        print.error(e)
+        print.error(e.response.data.error)
+      }
+
+      // make sure we got instructions
+      if (!instructions.completion) {
+        print.error(`No instructions for ${localFile}.`)
+        continue
+      } else {
+        print.info(instructions.completion)
+      }
+
+      // now create a prompt for OpenAI to convert the file
+      const conversionPrompt = `
+With this file named ${localFile}:
 
 \`\`\`
 ${sourceFileContents}
 \`\`\`
 
-Return just the converted file only. Keep the target file as close to the original as possible, while applying
-the changes from the git diff. Treat "..." in the diff as if it is a placeholder for existing code that should
-not be removed or changed.
+Apply these instructions:
+
+${instructions}
+
+Return the new file in a code block, formatted and indented correctly.
 `
 
-      print.info(diff)
-
       try {
-        var response = await claude({ prompt })
+        var converted = await claude({
+          prompt: conversionPrompt,
+          backticks: true,
+        })
       } catch (e) {
         print.error(e)
         print.error(e.response.data.error)
       }
 
       // const revampedCode = openAIResponse.data.choices[0].message
-      const revampedCode = response.completion
+      const revampedCode = converted.completion
 
       // write it back to the file
       await filesystem.writeAsync(localFile, revampedCode)
