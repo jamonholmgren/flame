@@ -1,12 +1,13 @@
 import { GluegunCommand } from 'gluegun'
 import { chatGPTPrompt } from '../../ai/openai'
+import { retryOnFail } from '../../utils/retryOnFail'
 
 // parse out all the files that were changed in the diff, returning an array of file paths and names
-function parseGitDiff(diffString: string) {
-  const lines = diffString.split('\n')
-  const files = {} as { [key: string]: string }
+function parseGitDiff(diffString) {
+  const files = {}
   let currentFile = null
 
+  const lines = diffString.split('\n')
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]
 
@@ -17,6 +18,9 @@ function parseGitDiff(diffString: string) {
         currentFile = fileName
         files[currentFile] = ''
       }
+    } else if (line.startsWith('@@')) {
+      // Skip the @@ line, as it contains the line numbers
+      i++
     } else if (currentFile !== null) {
       files[currentFile] += line + '\n'
     }
@@ -24,6 +28,8 @@ function parseGitDiff(diffString: string) {
 
   return files
 }
+
+const ignoreFiles = ['README.md' /* more files here if needed */]
 
 const command: GluegunCommand = {
   name: 'react-native',
@@ -69,12 +75,15 @@ const command: GluegunCommand = {
 
     // if targetVersion and currentVersion are the same, we're already on the latest version
     if (targetVersion === currentVersion) {
-      print.error(`You're already on version ${currentVersion}.`)
+      versionSpinner.stopAndPersist({
+        symbol: '🙂',
+        text: `You're already on version ${currentVersion}.`,
+      })
       return
     }
 
     // Stop the spinner, and mark as successful
-    versionSpinner.succeed('Versions fetched')
+    versionSpinner.succeed('Versions fetched: ' + currentVersion + ' -> ' + targetVersion)
 
     // fetch the React Native Upgrade Helper diff
     // format: https://raw.githubusercontent.com/react-native-community/rn-diff-purge/diffs/diffs/0.70.5..0.71.4.diff
@@ -89,13 +98,15 @@ const command: GluegunCommand = {
 
     // if the diff is null, we don't have a diff for this
     if (!diff) {
-      print.error(`We don't have a diff for upgrading from ${currentVersion} to ${targetVersion}.`)
+      diffSpinner.fail(
+        `We don't have a diff for upgrading from ${currentVersion} to ${targetVersion}.`
+      )
       print.info(`URL: ${baseURL + diffPath}`)
       return
     }
 
     // Stop the spinner, and mark as successful
-    diffSpinner.succeed('Diff fetched')
+    diffSpinner.succeed('Diff fetched from ' + baseURL + diffPath)
 
     // pull the files that changed from the git diff
     const files = parseGitDiff(diff)
@@ -113,12 +124,31 @@ const command: GluegunCommand = {
 
     // loop through each file and ask OpenAI to convert it using the diff for that file
     for (const file in files) {
-      const diff = files[file]
+      const fileDiff = files[file]
 
-      // Skip binary files
-      if (diff.includes('GIT binary patch')) {
-        // TODO: try to use git to convert the binary file instead?
-        print.warning(`Skipping binary file: ${file}`)
+      // Ignore binary files and files in ignoreFiles list
+      if (fileDiff.includes('GIT binary patch')) {
+        fileSpinner.stopAndPersist({
+          symbol: '🙈',
+          text: `Skipping binary patch for ${file}`,
+        })
+        continue
+      }
+
+      if (ignoreFiles.find((v) => file.includes(v))) {
+        fileSpinner.stopAndPersist({
+          symbol: '🙈',
+          text: `Ignoring ${file}`,
+        })
+        continue
+      }
+
+      // if they pass --only, only convert the file they specify
+      if (options.only && !file.includes(options.only)) {
+        fileSpinner.stopAndPersist({
+          symbol: '🙈',
+          text: `Skipping ${file}`,
+        })
         continue
       }
 
@@ -140,26 +170,32 @@ const command: GluegunCommand = {
       const sourceFileContents = await filesystem.readAsync(localFile)
 
       // if the file doesn't exist, skip it
-      if (!sourceFileContents) continue
+      if (!sourceFileContents) {
+        fileSpinner.stopAndPersist({
+          symbol: '🙈',
+          text: `Couldn't find ${localFile}, skipping`,
+        })
+        continue
+      }
 
       // Now use OpenAI to convert the file
       const diffPrompt = `
-    Using this git diff of a typical ${file} in a React Native ${currentVersion} app being upgraded to ${targetVersion}:
+Using this git diff of a typical ${file} in a React Native ${currentVersion} app being upgraded to ${targetVersion}:
 
-    \`\`\`
-    ${diff}
-    \`\`\`
+\`\`\`
+${fileDiff}
+\`\`\`
 
-    ... explain to me in bullet points what needs to be done to the file, assuming that the file we're
-    applying it to might have customizations we would want to keep. Assume your audience is yourself,
-    for a future chat session where you will not have any other context. Give specific instructions,
-    not general instructions.
+... explain to me in bullet points what needs to be done to the file, assuming that the file we're
+applying it to might have customizations we would want to keep. Assume your audience is yourself,
+for a future chat session where you will not have any other context. Give specific instructions,
+not general instructions.
     `
 
-      print.info(diffPrompt)
+      // print.info(diffPrompt)
 
-      try {
-        var instructions = await chatGPTPrompt({
+      var instructions = await retryOnFail(() =>
+        chatGPTPrompt({
           messages: [
             {
               content: diffPrompt,
@@ -168,44 +204,84 @@ const command: GluegunCommand = {
           ],
           model: 'gpt-3.5-turbo',
         })
-      } catch (e) {
-        print.error(e)
-        print.error(e.response.data.error)
-      }
+      )
 
       // make sure we got instructions
-      if (!instructions) {
+      if (!instructions || instructions.startsWith('ERROR:')) {
         print.error(`No instructions for ${localFile}.`)
+        fileSpinner.stopAndPersist({
+          symbol: '🙈',
+          text: `Skipping binary patch for ${file}`,
+        })
         continue
-      } else {
-        print.info(instructions)
       }
 
       // now create a prompt for OpenAI to convert the file
-      const conversionPrompt = `
-    With this file named ${localFile}:
+      const orientation = `
+You are a helper bot that is helping a developer upgrade their React Native app
+from ${currentVersion} to ${targetVersion} using a Node script.
+This script will use your response to convert the file ${localFile}.
+`
+
+      const prompt = `
+With this file named ${localFile}:
 
 \`\`\`
 ${sourceFileContents}
 \`\`\`
 
-    Apply these instructions:
+The git diff for a vanilla app between those versions looks like this:
+
+\`\`\`diff
+${fileDiff}
+\`\`\`
+
+According to a previous chat session, the following instructions to achieve this diff
+were given; however, keep in mind that GPT-3.5 was used to generate these, so they may not be perfect.
 
 ${instructions}
 
-    Return the new file in a code block, formatted and indented correctly.
+Bias toward keeping existing modifications to the existing code, except for things that
+are specifically called out as needing to be changed in the diff.
+`
+
+      const admonishments = `
+IMPORTANT NOTES:
+
+Return the new file in a code block, formatted and indented correctly so we can save it back to the original file.
+Return only the full file contents and no other explanation or notes.
+If there is no changes necessary, just say "NO CHANGES NEEDED FOR UPGRADE" and that is it, don't do anything else.
+Our tool relies on detecting the string "NO CHANGES NEEDED FOR UPGRADE" for no changes.
+
+Do not output "Here is the modified file" or anything like it.
+We only want the modified code for upgrading! This is important!
+If you output additional text, our tool will not be able to extract the
+modified code and replace the original code with it.
+
+If you output three backticks before and after, we will simply strip them before
+saving them to the file. So you can use them for formatting if you want.
 `
 
       try {
-        var converted = await chatGPTPrompt({
-          messages: [
-            {
-              content: conversionPrompt,
-              role: 'system',
-            },
-          ],
-          model: 'gpt-4',
-        })
+        var converted = await retryOnFail(() =>
+          chatGPTPrompt({
+            messages: [
+              {
+                content: orientation,
+                role: 'system',
+              },
+              {
+                content: prompt,
+                role: 'user',
+              },
+              {
+                content: admonishments,
+                role: 'system',
+              },
+            ],
+            model: 'gpt-4',
+          })
+        )
       } catch (e) {
         // catching any conversion errors
         print.error(e)
@@ -214,11 +290,24 @@ ${instructions}
 
       // if we didn't get a converted file, continue
       if (!converted) {
-        print.error(`No conversion for ${localFile}.`)
+        fileSpinner.stopAndPersist({
+          symbol: '🙈',
+          text: `No conversion generated for ${localFile}.`,
+        })
         continue
+      } else if (converted.includes('NO CHANGES NEEDED FOR UPGRADE')) {
+        // if the file didn't need to be changed, mark it as such
+        fileSpinner.stopAndPersist({
+          symbol: '🙈',
+          text: `No changes needed for ${localFile}.`,
+        })
       } else {
+        // strip out the backticks only from the beginning and end of the converted file
+        // also strip any newlines from the beginning (only) of the file
+        const newContents = converted.replace(/^```/, '').replace(/```$/, '').replace(/^\n/, '')
+
         // write the file to the filesystem
-        filesystem.write(localFile, converted)
+        await filesystem.writeAsync(localFile, newContents)
 
         // Stop the spinner and mark the file as converted before continuing to the next file
         fileSpinner.succeed(`Converted ${localFile}`)

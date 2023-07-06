@@ -50,8 +50,8 @@ export const chatGPTPrompt = async ({
     console.log('---PROMPT---')
     console.dir(messages)
     console.log('---ERROR---')
-    console.dir(e.response.data.error)
-    return `I'm sorry, I had an error. Please try again.\n\n`
+    console.dir(e.response)
+    return `ERROR: I'm sorry, I had an error. Please try again.\n\n`
   }
 
   return response.data.choices.map((choice) => choice.message.content).join('\n\n')
