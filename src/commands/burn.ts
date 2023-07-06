@@ -2,6 +2,10 @@
 // together multiple instructions from the AI and write to the proper files.
 // It also will ask which AI to use, such as ChatGPT 3.5, 4, or Claude.
 
+/**
+ * THIS DOES NOT CURRENTLY WORK. NEEDS SOME TLC.
+ **/
+
 import { GluegunCommand, GluegunFilesystem } from 'gluegun'
 
 import { chatGPTPrompt } from '../ai/openai'
@@ -13,7 +17,7 @@ const command: GluegunCommand = {
     const { print, filesystem, system, prompt } = toolbox
 
     // start the prompt loop
-    let prompts: ChatCompletionRequestMessage[] = [
+    let messages: ChatCompletionRequestMessage[] = [
       {
         content:
           'Use HTML, CSS, and JavaScript (via TypeScript). Assume Parcel will be used to compile and serve the app. All links to JS files should use the .ts extension. All JS files should be TypeScript. Use small functions and files. Use this format:\n\nfile: <filename1>\n\nfile: <filename2>\n\nDo not include files that do not need to be created or updated.\n\nDo not include file contents yet; I will ask for the contents when ready.\n\n',
@@ -42,18 +46,17 @@ const command: GluegunCommand = {
         // get the git diff
         const gitDiff = await system.run('git diff')
         // if it's really big, truncate it
-        const gitDiffTruncated =
-          gitDiff.length > 1000 ? gitDiff.slice(0, 1000) : gitDiff
+        const gitDiffTruncated = gitDiff.length > 1000 ? gitDiff.slice(0, 1000) : gitDiff
 
         // get the commit message from AI
-        const messages: ChatCompletionRequestMessage[] = [
-          ...prompts,
+        messages = [
+          ...messages,
           {
             content: `What would be a good git commit message for the last changes? As a help, here is the git diff:\n\n${gitDiffTruncated}\n\nReturn JUST the commit message, nothing else.`,
             role: 'user',
           },
         ]
-        const commitMessage = await chatGPTPrompt({ prompts: messages })
+        const commitMessage = await chatGPTPrompt({ messages })
 
         console.log('commitMessage', commitMessage)
 
@@ -68,10 +71,7 @@ const command: GluegunCommand = {
         // commit the changes with git
         const commitMessageFinal = commitMessagePrompt.commitMessage
         const commitResult = await system.run(
-          `git add -A && git commit -am "${commitMessageFinal.replace(
-            /"/g,
-            '\\"'
-          )}"`
+          `git add -A && git commit -am "${commitMessageFinal.replace(/"/g, '\\"')}"`
         )
         console.log('commitResult', commitResult)
 
@@ -79,16 +79,16 @@ const command: GluegunCommand = {
       }
 
       if (promptText === 'current') {
-        console.log('Current prompts:', prompts)
+        console.log('Current messages:', messages)
         continue
       }
 
       if (promptText === 'reset') {
-        prompts = [prompts[0]]
+        messages = [messages[0]]
         continue
       }
 
-      prompts.push({
+      messages.push({
         content: `${promptText}\n\nWhat files need to be changed to do this? Use this format:\n\nfile: <filename1>\nfile: <filename2>\n\n`,
         role: 'user',
       })
@@ -97,7 +97,7 @@ const command: GluegunCommand = {
       let response = ''
 
       response = await chatGPTPrompt({
-        prompts,
+        messages,
       })
 
       if (response.length === 0) continue
@@ -105,8 +105,8 @@ const command: GluegunCommand = {
       // apply the changes
       const lastPrompt = response
 
-      // add the last prompt to the prompts array
-      prompts.push({
+      // add the last prompt to the messages array
+      messages.push({
         content: lastPrompt,
         role: 'assistant',
       })
@@ -117,7 +117,7 @@ const command: GluegunCommand = {
 
       print.info(`Files to be changed: ${changedFiles.join(', ')}\n\n`)
 
-      // todo: add contents of existing files that will be affected to a temporary prompts array
+      // todo: add contents of existing files that will be affected to a temporary messages array
 
       // for each instruction key, apply it
       for (const lastPromptAction of changedFiles) {
@@ -143,8 +143,7 @@ const command: GluegunCommand = {
                 `File ${filename} is too large to provide to the AI. We'll provide some of it.`
               )
               existingFileContents =
-                existingFileContents.slice(0, 9000) +
-                '\n// ... truncated for brevity ...'
+                existingFileContents.slice(0, 9000) + '\n// ... truncated for brevity ...'
             }
 
             updatePrompt = `For this file:\n\n\`\`\`${existingFileContents}\`\`\`\n\nReturn just the new file contents with the changes requested. If no changes are necessary, still return the file contents.\n`
@@ -152,8 +151,8 @@ const command: GluegunCommand = {
 
           // now use openAI to modify the file
           let response = await chatGPTPrompt({
-            prompts: [
-              ...prompts,
+            messages: [
+              ...messages,
               {
                 content: updatePrompt,
                 role: 'user',
@@ -195,9 +194,7 @@ const command: GluegunCommand = {
 module.exports = command
 
 async function applyChanges(example, fs: GluegunFilesystem) {
-  const instructions = example
-    .split('\n\n')
-    .map((instruction) => instruction.trim())
+  const instructions = example.split('\n\n').map((instruction) => instruction.trim())
 
   for (const instruction of instructions) {
     const [action, ...args] = instruction.split('\n').map((arg) => arg.trim())
@@ -224,9 +221,7 @@ async function applyChanges(example, fs: GluegunFilesystem) {
         const fileName = args[0]
         let fileContent = await fs.readAsync(fileName)
         for (let i = 1; i < args.length; i++) {
-          const [operation, target, replacement] = args[i]
-            .split(/[\s]+/)
-            .slice(-3)
+          const [operation, target, replacement] = args[i].split(/[\s]+/).slice(-3)
           if (operation === 'replace') {
             fileContent = fileContent.replace(target, replacement)
           } else if (operation === 'add') {
@@ -245,8 +240,7 @@ async function applyChanges(example, fs: GluegunFilesystem) {
 }
 
 function parseInstructions(example) {
-  const instructionPattern =
-    /(?:create file:|update file:)\s*[a-zA-Z0-9_\-/.]+\s*\n```[\s\S]*?```/g
+  const instructionPattern = /(?:create file:|update file:)\s*[a-zA-Z0-9_\-/.]+\s*\n```[\s\S]*?```/g
   const instructions = example.match(instructionPattern)
 
   if (!instructions) return {}
