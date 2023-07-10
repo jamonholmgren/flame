@@ -48,6 +48,13 @@ const command: GluegunCommand = {
       return
     }
 
+    // check if shouldConvert the file
+    if (recipe.shouldConvert && !recipe.shouldConvert(sourceFileContents)) {
+      spinner.succeed()
+      print.error(`\nThis file does not need to be converted from ${from} to ${to}.`)
+      return
+    }
+
     // Split the source file into chunks at function boundaries if it's too large
     const MAX_SIZE = 5000
     let chunks = [sourceFileContents]
