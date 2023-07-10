@@ -72,11 +72,18 @@ const command: GluegunCommand = {
 
     // update spinner
     spinner.succeed()
-    spinner.text = `ChatGPT is converting ${sourceFile} from ${from} to ${to}`
+    spinner.text = `AI conversion of ${sourceFile} from ${from} to ${to}`
     spinner.start()
 
     let revampedCode = ''
-    for (let chunk of chunks) {
+    for (let i = 0; i < chunks.length; i++) {
+      let chunk = chunks[i]
+
+      // Update spinner text to show progress for chunks
+      spinner.text = `AI conversion of ${sourceFile} from ${from} to ${to} (${i + 1} of ${
+        chunks.length
+      })`
+
       const messages: ChatCompletionRequestMessage[] = [
         {
           content: recipe.prompt,
@@ -97,8 +104,8 @@ const command: GluegunCommand = {
         var response = await openai.createChatCompletion({
           model: 'gpt-4',
           messages,
-          max_tokens: 3000,
-          temperature: 0,
+          // max_tokens: 3000,
+          // temperature: 0,
           user: process.env.USER,
         })
       } catch (e) {
@@ -119,8 +126,17 @@ const command: GluegunCommand = {
 
       const chunkRevampedCodeMessage = response.data.choices[0].message.content
 
-      // strip any backticks before and after the code block
-      const chunkRevampedCode = chunkRevampedCodeMessage.replace(/^```/, '').replace(/```$/, '')
+      // Regex to match text within ```
+      let match = chunkRevampedCodeMessage.match(/```([\s\S]*?)```/)
+
+      let chunkRevampedCode = ''
+      if (match) {
+        // If match is found (i.e., content within ```), use it
+        chunkRevampedCode = match[1].trim()
+      } else {
+        // If no match is found, use the entire content
+        chunkRevampedCode = chunkRevampedCodeMessage
+      }
 
       // concatenate the revamped chunk to the output code
       revampedCode += chunkRevampedCode + '\n'
