@@ -1,7 +1,7 @@
 export const recipe = {
   prompt: `
-    Replace the jQuery functions in the following code with plain JavaScript equivalents.
-    Use the simplest version of the equivalent plain JavaScript function that you can.
+    Examine the following code. If you find any jQuery functions, replace them with plain JavaScript equivalents. 
+    Use the simplest version of the equivalent plain JavaScript function you can.
     Do not add additional comments to the replacements.
     Use JSDoc to document the types on each function.
     If there are multiple ways to do the replacement, choose the one that is most similar to the original jQuery function.
@@ -17,7 +17,11 @@ $('#my-element').myPlugin({ foo: 'bar' })
 myPlugin('#my-element', { foo: 'bar' })
 \`\`\`
 
-If there is no jQuery-related code or functions, return the original source code as-is.
+    Additional changes will likely be necessary to remove the reliance on jQuery, both for the plugin itself and for the code that uses the plugin.
+    Use your knowledge of how jQuery maps to plain JavaScript to make these changes.
+    You can use the knowledge of youmightnotneedjquery.com to help you.
+
+    If there are no jQuery-related functions or plugins, then return the original code as-is without any modifications or comments, even if there might be other areas in the code that could be subject to changes or improvements. No explanations are necessary. Do not provide any additional commentary on the code, just perform the jQuery conversion or return the code as is.
   `,
   admonishments: `
     Return only the full, modified file contents and no other explanation or notes!

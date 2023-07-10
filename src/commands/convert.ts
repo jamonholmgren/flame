@@ -80,7 +80,9 @@ const command: GluegunCommand = {
             .map((_, idx) => 1000 * idx)
         }
 
-        chunks = chunkByLines(sourceFileContents, splitArray)
+        chunks = chunkByLines(sourceFileContents, splitArray).filter(
+          (chunk) => chunk.trim().length > 0
+        )
       }
     }
 
