@@ -17,8 +17,8 @@ $('#my-element').myPlugin({ foo: 'bar' })
 myPlugin('#my-element', { foo: 'bar' })
 \`\`\`
 
-If there is no jQuery-related code or functions, just return the original source code as-is.
-`,
+If there is no jQuery-related code or functions, return the original source code as-is.
+  `,
   admonishments: `
     Return only the full, modified file contents and no other explanation or notes!
     Match same spacing and indentation.
@@ -33,34 +33,5 @@ If there is no jQuery-related code or functions, just return the original source
     // we will convert every file
     return true
   },
-  chunk: (source: string) => {
-    // Specific line numbers for Slick Carousel in this case
-    const lineNumbers = [1049, 2023, 3038]
-
-    // First, split the sourceFileContents into an array of lines.
-    const lines = source.split('\n')
-
-    let chunks = []
-
-    // We start with startLine = 0 and endLine = the first value from lineNumbers
-    let startLine = 0
-    let endLine = lineNumbers[0]
-
-    // Use a for loop to create chunks of lines based on lineNumbers
-    for (let i = 0; i <= lineNumbers.length; i++) {
-      // slice the lines from startLine to endLine (endLine not included)
-      let chunkLines = lines.slice(startLine, endLine)
-      // join the chunkLines into a single string
-      let chunk = chunkLines.join('\n')
-
-      // push the chunk into chunks array
-      chunks.push(chunk)
-
-      // update startLine and endLine for the next iteration
-      startLine = endLine
-      endLine = lineNumbers[i + 1]
-    }
-
-    return chunks
-  },
+  // no `chunk` function, because we want to use the built-in one
 }

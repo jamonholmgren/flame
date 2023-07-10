@@ -1,28 +1,34 @@
 import { GluegunCommand } from 'gluegun'
 import { openAI } from '../ai/openai'
 import { ChatCompletionRequestMessage } from 'openai'
+import { chunkByLines } from '../utils/chunkByLines'
 
 // type for recipes
 type Recipe = {
   prompt: string
   admonishments?: string
-  chunk?: (sourceFileContents: string) => string[]
+  chunk?: (sourceFileContents: string, options: object) => string[]
   shouldConvert?: (sourceFileContents: string) => boolean
 }
 
 const command: GluegunCommand = {
   name: 'convert',
   run: async (toolbox) => {
-    const { print } = toolbox
+    const { print, parameters } = toolbox
 
     // first parameter is what we want to change from
-    const from = toolbox.parameters.first
+    const from = parameters.first
 
     // second parameter is what we want to change to
-    const to = toolbox.parameters.second
+    const to = parameters.second
 
     // get the third parameter as the source file
-    const sourceFile = toolbox.parameters.third
+    const sourceFile = parameters.third
+
+    // get lineChunks parameter
+    const lineChunks = parameters.options.lineChunks
+      ? parameters.options.lineChunks.split(',').map(Number)
+      : undefined
 
     // show a spinner
     print.info(`\nConverting ${sourceFile} from ${from} to ${to}\n`)
@@ -62,11 +68,19 @@ const command: GluegunCommand = {
     if (sourceFileContents.length > MAX_SIZE) {
       // If recipe includes a chunk function, use that to chunk the code
       if (recipe.chunk) {
-        chunks = recipe.chunk(sourceFileContents)
+        chunks = recipe.chunk(sourceFileContents, { lineChunks })
       } else {
-        // Otherwise, split at function boundaries
-        // This regex splits the code at function boundaries.
-        chunks = sourceFileContents.split(/\n(?=function\s*\w*\s*\()/)
+        // Otherwise, split at function boundaries or use lineChunks if provided
+        let splitArray: number[] = lineChunks
+
+        if (!splitArray || splitArray.length === 0) {
+          // Default to chunking every 1000 lines if no lineChunks provided
+          splitArray = Array(Math.ceil(sourceFileContents.split('\n').length / 1000))
+            .fill(0)
+            .map((_, idx) => 1000 * idx)
+        }
+
+        chunks = chunkByLines(sourceFileContents, splitArray)
       }
     }
 
@@ -84,13 +98,6 @@ const command: GluegunCommand = {
         chunks.length
       })`
 
-      let finalAdmonishments = ''
-      if (chunks.length > 1) {
-        finalAdmonishments = `\nWe are splitting the source file into multiple chunks. This is chunk ${
-          i + 1
-        } of ${chunks.length}.`
-      }
-
       const messages: ChatCompletionRequestMessage[] = [
         {
           content: recipe.prompt,
@@ -101,7 +108,7 @@ const command: GluegunCommand = {
           role: 'system',
         },
         {
-          content: recipe.admonishments + finalAdmonishments,
+          content: recipe.admonishments,
           role: 'system',
         },
       ]
@@ -111,7 +118,6 @@ const command: GluegunCommand = {
         var response = await openai.createChatCompletion({
           model: 'gpt-4',
           messages,
-          stream: false,
           // max_tokens: 3000,
           // temperature: 0,
           user: process.env.USER,
@@ -134,19 +140,10 @@ const command: GluegunCommand = {
 
       const chunkRevampedCodeMessage = response.data.choices[0].message.content
 
-      // Regex to match text within ```
-      let match = chunkRevampedCodeMessage.match(/```([\s\S]*?)```/)
-
-      let chunkRevampedCode = ''
-      if (match) {
-        // If match is found (i.e., content within ```), use it
-        const chunkRevampedCode = chunkRevampedCodeMessage
-          .replace(/^```.*\n/gm, '')
-          .replace(/```.*\n$/gm, '')
-      } else {
-        // If no match is found, use the entire content
-        chunkRevampedCode = chunkRevampedCodeMessage
-      }
+      // strip any line that starts and ends with backticks
+      const chunkRevampedCode = chunkRevampedCodeMessage
+        .replace(/^```.*\n/gm, '')
+        .replace(/```.*\n$/gm, '')
 
       // concatenate the revamped chunk to the output code
       revampedCode += chunkRevampedCode + '\n'
