@@ -1,3 +1,4 @@
+// this needs to be updated for ChatGPT-4
 export const recipe = {
   prompt: `
 // Examples of migrating from AsyncStorage to react-native-mmkv in React Native (typescript):
@@ -50,7 +51,7 @@ Reactotron.setAsyncStorageHandler(mmkvStorageHandler)
 // Now here is a TypeScript) file using AsyncStorage (look for "// ===" to delimit after the end of the file):
 
 `,
-  finalNotes: `
+  admonishments: `
 // react-native-mmkv returns "undefined" instead of "null". Converts all react-native-mmkv's "undefined" to "null" to preserve the original behavior.
 // react-native-mmkv functions are synchronous. Refactors code that accesses them to be synchronous, including switching .catch(...) to try {...} catch {...}.
 // Instantiates the MMKV storage object near the top of the file.

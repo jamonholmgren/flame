@@ -6,7 +6,7 @@ export const recipe = {
     Include any imports that are needed and remove any that are not needed.
     Do not modify code that is not related to the test functions.
   `,
-  finalNotes: `
+  admonishments: `
     Return only the full file contents and no other explanation or notes.
     Do not use three backticks to delimit the start/end of the code. Only return the code.
     If there is no Ava test code, just return the original source code as-is.

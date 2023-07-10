@@ -5,7 +5,7 @@ export const recipe = {
     Do not add comments to the replacements.
     Also replace any ramdasauce functions with plain JavaScript equivalents as well.
   `,
-  finalNotes: `
+  admonishments: `
     Return only the full file contents and no other explanation or notes.
     Do not use three backticks to delimit the start/end of the code. Only return the code.
     If there is no Ramda code, just return the original source code as-is.

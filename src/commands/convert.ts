@@ -5,7 +5,7 @@ import { ChatCompletionRequestMessage } from 'openai'
 // type for recipes
 type Recipe = {
   prompt: string
-  finalNotes?: string
+  admonishments?: string
   chunk?: (sourceFileContents: string) => string[]
   shouldConvert?: (sourceFileContents: string) => boolean
 }
@@ -84,6 +84,13 @@ const command: GluegunCommand = {
         chunks.length
       })`
 
+      let finalAdmonishments = ''
+      if (chunks.length > 1) {
+        finalAdmonishments = `\nWe are splitting the source file into multiple chunks. This is chunk ${
+          i + 1
+        } of ${chunks.length}.`
+      }
+
       const messages: ChatCompletionRequestMessage[] = [
         {
           content: recipe.prompt,
@@ -94,7 +101,7 @@ const command: GluegunCommand = {
           role: 'system',
         },
         {
-          content: recipe.finalNotes,
+          content: recipe.admonishments + finalAdmonishments,
           role: 'system',
         },
       ]
@@ -104,6 +111,7 @@ const command: GluegunCommand = {
         var response = await openai.createChatCompletion({
           model: 'gpt-4',
           messages,
+          stream: false,
           // max_tokens: 3000,
           // temperature: 0,
           user: process.env.USER,
@@ -132,7 +140,9 @@ const command: GluegunCommand = {
       let chunkRevampedCode = ''
       if (match) {
         // If match is found (i.e., content within ```), use it
-        chunkRevampedCode = match[1].trim()
+        const chunkRevampedCode = chunkRevampedCodeMessage
+          .replace(/^```.*\n/gm, '')
+          .replace(/```.*\n$/gm, '')
       } else {
         // If no match is found, use the entire content
         chunkRevampedCode = chunkRevampedCodeMessage

@@ -19,12 +19,12 @@ myPlugin('#my-element', { foo: 'bar' })
 
 If there is no jQuery-related code or functions, just return the original source code as-is.
 `,
-  finalNotes: `
-    Return only the full file contents and no other explanation or notes.
+  admonishments: `
+    Return only the full, modified file contents and no other explanation or notes!
     Match same spacing and indentation.
     If you delineate the response with three backticks, we will strip them out.
-    We are using a tool to automatically parse and update the code, so it must not include other text.
-    It's important not to include any other text in the response other than the code! Otherwise our tool will break.
+    We are using a node-based tool to automatically parse and update the code, so it must not include other explanation other than the code.
+    If you include explanations, or don't include the full source code, our tool will break! DO NOT DO THIS!
   `,
   shouldConvert: (sourceFileContents: string) => {
     // return sourceFileContents.includes('jQuery')
