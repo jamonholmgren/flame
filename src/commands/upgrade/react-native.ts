@@ -1,33 +1,7 @@
 import { GluegunCommand } from 'gluegun'
 import { chatGPTPrompt } from '../../ai/openai'
 import { retryOnFail } from '../../utils/retryOnFail'
-
-// parse out all the files that were changed in the diff, returning an array of file paths and names
-function parseGitDiff(diffString) {
-  const files = {}
-  let currentFile = null
-
-  const lines = diffString.split('\n')
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]
-
-    if (line.startsWith('diff --git')) {
-      const match = line.match(/diff --git a\/(.+) b\/(.+)/)
-      if (match) {
-        const fileName = match[2]
-        currentFile = fileName
-        files[currentFile] = ''
-      }
-    } else if (line.startsWith('@@')) {
-      // Skip the @@ line, as it contains the line numbers
-      i++
-    } else if (currentFile !== null) {
-      files[currentFile] += line + '\n'
-    }
-  }
-
-  return files
-}
+import { parseGitDiff } from '../../utils/parseGitDiff'
 
 const ignoreFiles = ['README.md' /* more files here if needed */]
 
@@ -230,14 +204,14 @@ With this file named ${localFile}:
 ${sourceFileContents}
 \`\`\`
 
-The git diff for a vanilla app between those versions looks like this:
+The git diff for an unmodified React Native app between those versions looks like this:
 
 \`\`\`diff
 ${fileDiff}
 \`\`\`
 
-According to a previous chat session, the following instructions to achieve this diff
-were given; however, keep in mind that GPT-3.5 was used to generate these, so they may not be perfect.
+According to a previous chat session, the following instructions to apply the changes in this diff
+were given below; however, keep in mind that GPT-3.5 was used to generate these, so they may not be perfect.
 
 ${instructions}
 
