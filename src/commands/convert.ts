@@ -2,6 +2,14 @@ import { GluegunCommand } from 'gluegun'
 import { openAI } from '../ai/openai'
 import { ChatCompletionRequestMessage } from 'openai'
 
+// type for recipes
+type Recipe = {
+  prompt: string
+  finalNotes?: string
+  chunk?: (sourceFileContents: string) => string[]
+  shouldConvert?: (sourceFileContents: string) => boolean
+}
+
 const command: GluegunCommand = {
   name: 'convert',
   run: async (toolbox) => {
@@ -16,8 +24,6 @@ const command: GluegunCommand = {
     // get the third parameter as the source file
     const sourceFile = toolbox.parameters.third
 
-    // const additionalInstructions = toolbox.parameters.third || ''
-
     // show a spinner
     print.info(`\nConverting ${sourceFile} from ${from} to ${to}\n`)
 
@@ -25,7 +31,7 @@ const command: GluegunCommand = {
     spinner.start()
 
     // read the source file
-    const sourceFileContents = await toolbox.filesystem.readAsync(sourceFile)
+    let sourceFileContents = await toolbox.filesystem.readAsync(sourceFile)
 
     // update spinner
     spinner.succeed()
@@ -33,20 +39,28 @@ const command: GluegunCommand = {
     spinner.start()
 
     // ensure there's a recipe for this conversion
+    let recipe: Recipe
     try {
-      var { recipe } = require(`../recipes/${from}-to-${to}`)
+      const recipeExport = require(`../recipes/${from}-to-${to}`) as { recipe: Recipe }
+      recipe = recipeExport.recipe
     } catch (e) {
       print.error(`No recipe found for converting from ${from} to ${to}`)
       return
     }
 
-    // check if shouldConvert the file
-    if (recipe.shouldConvert && !recipe.shouldConvert(sourceFileContents)) {
-      spinner.succeed()
-      print.error(
-        `\nThis file does not need to be converted from ${from} to ${to}.`
-      )
-      return
+    // Split the source file into chunks at function boundaries if it's too large
+    const MAX_SIZE = 5000
+    let chunks = [sourceFileContents]
+
+    if (sourceFileContents.length > MAX_SIZE) {
+      // If recipe includes a chunk function, use that to chunk the code
+      if (recipe.chunk) {
+        chunks = recipe.chunk(sourceFileContents)
+      } else {
+        // Otherwise, split at function boundaries
+        // This regex splits the code at function boundaries.
+        chunks = sourceFileContents.split(/\n(?=function\s*\w*\s*\()/)
+      }
     }
 
     // update spinner
@@ -54,62 +68,58 @@ const command: GluegunCommand = {
     spinner.text = `ChatGPT is converting ${sourceFile} from ${from} to ${to}`
     spinner.start()
 
-    const messages: ChatCompletionRequestMessage[] = [
-      {
-        content: recipe.prompt,
-        role: 'system',
-      },
-      {
-        content: `Here is the source file:\n\n\`\`\`\n${sourceFileContents}\n\`\`\``,
-        role: 'system',
-      },
-      {
-        content: recipe.finalNotes,
-        role: 'system',
-      },
-    ]
+    let revampedCode = ''
+    for (let chunk of chunks) {
+      const messages: ChatCompletionRequestMessage[] = [
+        {
+          content: recipe.prompt,
+          role: 'system',
+        },
+        {
+          content: `Here is the source file:\n\n\`\`\`\n${chunk}\n\`\`\``,
+          role: 'system',
+        },
+        {
+          content: recipe.finalNotes,
+          role: 'system',
+        },
+      ]
 
-    const openai = await openAI()
-    try {
-      var response = await openai.createChatCompletion({
-        model: 'gpt-4',
-        messages,
-        max_tokens: 3000,
-        temperature: 0,
-        // top_p: 1,
-        // presence_penalty: 0,
-        // frequency_penalty: 0,
-        // best_of: 1, // test a couple options
-        // n: 1, // return the best result
-        stream: false,
-        // stop: ['```'],
-        // get current OS username and use that here to prevent spamming
-        user: process.env.USER,
-      })
-    } catch (e) {
-      print.error(e)
-      print.error(e.response.data.error)
-      return
+      const openai = await openAI()
+      try {
+        var response = await openai.createChatCompletion({
+          model: 'gpt-4',
+          messages,
+          max_tokens: 3000,
+          temperature: 0,
+          user: process.env.USER,
+        })
+      } catch (e) {
+        print.error(e)
+        print.error(e.response.data.error)
+        return
+      }
+
+      if (!response?.data?.choices) {
+        print.error('Error or no response from OpenAI')
+        return
+      }
+
+      // update spinner
+      spinner.succeed()
+      spinner.text = `Writing updated code to ${sourceFile}`
+      spinner.start()
+
+      const chunkRevampedCodeMessage = response.data.choices[0].message.content
+
+      // strip any backticks before and after the code block
+      const chunkRevampedCode = chunkRevampedCodeMessage.replace(/^```/, '').replace(/```$/, '')
+
+      // concatenate the revamped chunk to the output code
+      revampedCode += chunkRevampedCode + '\n'
     }
 
-    if (!response?.data?.choices) {
-      print.error('Error or no response from OpenAI')
-      return
-    }
-
-    // update spinner
-    spinner.succeed()
-    spinner.text = `Writing updated code to ${sourceFile}`
-    spinner.start()
-
-    const revampedCodeMessage = response.data.choices[0].message.content
-
-    // strip any backticks before and after the code block
-    const revampedCode = revampedCodeMessage
-      .replace(/^```/, '')
-      .replace(/```$/, '')
-
-    // now write that back to the source file
+    // now write the full revamped code back to the source file
     await toolbox.filesystem.writeAsync(sourceFile, revampedCode)
 
     // update spinner
