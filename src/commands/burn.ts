@@ -94,11 +94,11 @@ const command: GluegunCommand = {
       })
 
       // ask the AI for a response
-      let response = ''
-
-      response = await chatGPTPrompt({
+      let responseObj = await chatGPTPrompt({
         messages,
       })
+
+      let response = responseObj.content
 
       if (response.length === 0) continue
 
@@ -150,7 +150,7 @@ const command: GluegunCommand = {
           }
 
           // now use openAI to modify the file
-          let response = await chatGPTPrompt({
+          let responseObj = await chatGPTPrompt({
             messages: [
               ...messages,
               {
@@ -160,7 +160,7 @@ const command: GluegunCommand = {
             ],
           })
 
-          response = response.trim()
+          response = responseObj.content.trim()
 
           // trim backticks from the beginning and end of the response if they exist, including anything else on that line
           if (response.startsWith('```')) {

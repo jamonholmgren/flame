@@ -1,5 +1,7 @@
 import {
+  ChatCompletionFunctions,
   ChatCompletionRequestMessage,
+  ChatCompletionResponseMessage,
   Configuration,
   CreateChatCompletionResponse,
   OpenAIApi,
@@ -29,9 +31,11 @@ export async function openAI() {
 export const chatGPTPrompt = async ({
   messages,
   model = 'gpt-4', // Default to 'gpt-4'
+  functions = undefined,
 }: {
   messages: ChatCompletionRequestMessage[]
   model?: string
+  functions?: ChatCompletionFunctions[]
 }) => {
   const ai = await openAI()
 
@@ -40,6 +44,7 @@ export const chatGPTPrompt = async ({
     response = await ai.createChatCompletion({
       model,
       messages,
+      functions,
       max_tokens: 2000,
       temperature: 0,
       n: 1, // return the best result
@@ -51,8 +56,11 @@ export const chatGPTPrompt = async ({
     console.dir(messages)
     console.log('---ERROR---')
     console.dir(e.response)
-    return `ERROR: I'm sorry, I had an error. Please try again.\n\n`
+    return {
+      content: `ERROR: I'm sorry, I had an error. Please try again.\n\n`,
+      role: 'assistant',
+    } satisfies ChatCompletionResponseMessage
   }
 
-  return response.data.choices.map((choice) => choice.message.content).join('\n\n')
+  return response.data.choices[0].message
 }

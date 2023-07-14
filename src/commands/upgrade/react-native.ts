@@ -2,8 +2,28 @@ import { GluegunCommand } from 'gluegun'
 import { chatGPTPrompt } from '../../ai/openai'
 import { retryOnFail } from '../../utils/retryOnFail'
 import { parseGitDiff } from '../../utils/parseGitDiff'
+import { ChatCompletionFunctions } from 'openai'
 
 const ignoreFiles = ['README.md' /* more files here if needed */]
+
+type ChatCompletionFunction = ChatCompletionFunctions & { fn: (args: any) => void }
+
+// Helper function to handle function calls
+async function handleFunctionCall(response, functions) {
+  if (response.function_call) {
+    const functionName = response.function_call.name
+    const functionArgs = JSON.parse(response.function_call.arguments)
+
+    // Look up function in the registry and call it with the parsed arguments
+    const func = functions.find((f) => f.name === functionName)
+
+    if (func) {
+      await func.fn(functionArgs)
+    } else {
+      console.error(`Function '${functionName}' is not registered.`)
+    }
+  }
+}
 
 const command: GluegunCommand = {
   name: 'react-native',
@@ -11,6 +31,67 @@ const command: GluegunCommand = {
   run: async (toolbox) => {
     const { print, filesystem, http, parameters } = toolbox
     const { options } = parameters
+
+    // Register the functions that can be called from the AI
+    const functions: ChatCompletionFunction[] = [
+      // Create a file
+      {
+        name: 'createFile',
+        description: 'Create a file',
+        parameters: {
+          type: 'object',
+          properties: {
+            path: {
+              type: 'string',
+              description: 'The path of the file to create.',
+            },
+            contents: {
+              type: 'string',
+              description: 'The contents of the file to create.',
+            },
+          },
+        },
+        fn: async (args) => {
+          // Create the file
+          await filesystem.writeAsync(args.path, args.contents)
+        },
+      },
+      {
+        name: 'error',
+        description: 'Log an error message to the console',
+        parameters: {
+          type: 'object',
+          properties: {
+            contents: {
+              type: 'string',
+              description: 'The message to error to the console.',
+            },
+          },
+          required: ['contents'],
+        },
+        fn: (args) => {
+          console.error(args)
+        },
+      },
+      {
+        name: 'prettyPrint',
+        description: 'Pretty print a JSON object to the console',
+        parameters: {
+          type: 'object',
+          properties: {
+            contents: {
+              type: 'object',
+              additionalProperties: true,
+              description: 'The JSON object to pretty print.',
+            },
+          },
+          required: ['contents'],
+        },
+        fn: (args) => {
+          console.dir(args)
+        },
+      },
+    ]
 
     // Retrieve the path of the folder to upgrade. If not provided, use the current folder.
     const folderToUpgrade = parameters.first || './'
@@ -43,7 +124,7 @@ const command: GluegunCommand = {
     }
 
     const appNameKebabCase = packageJson.name
-    const appJson = await filesystem.readAsync('app.json', 'json')
+    const appJson = await filesystem.readAsync(`${folderToUpgrade}/app.json`, 'json')
     const appDisplayName = appJson.displayName
     const appNameLowercase = appDisplayName.toLowerCase()
 
@@ -180,6 +261,8 @@ not general instructions.
         })
       )
 
+      instructions = instructions.content
+
       // make sure we got instructions
       if (!instructions || instructions.startsWith('ERROR:')) {
         print.error(`No instructions for ${localFile}.`)
@@ -237,25 +320,35 @@ saving them to the file. So you can use them for formatting if you want.
 `
 
       try {
-        var converted = await retryOnFail(() =>
-          chatGPTPrompt({
-            messages: [
-              {
-                content: orientation,
-                role: 'system',
-              },
-              {
-                content: prompt,
-                role: 'user',
-              },
-              {
-                content: admonishments,
-                role: 'system',
-              },
-            ],
-            model: 'gpt-4',
-          })
-        )
+        var convertedObj = await chatGPTPrompt({
+          functions,
+          messages: [
+            // {
+            //   content: orientation,
+            //   role: 'system',
+            // },
+            // {
+            //   content: prompt,
+            //   role: 'user',
+            // },
+            // {
+            //   content: admonishments,
+            //   role: 'system',
+            // },
+            {
+              content: `Make a file that contains the text "Hello, world!" and save it as ./hello.txt`,
+              role: 'user',
+            },
+          ],
+          model: 'gpt-4',
+        })
+
+        console.log({ convertedObj })
+        var converted = convertedObj.content
+
+        await handleFunctionCall(convertedObj, functions)
+
+        process.exit(0)
       } catch (e) {
         // catching any conversion errors
         print.error(e)
