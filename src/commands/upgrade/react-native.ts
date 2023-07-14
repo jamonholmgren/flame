@@ -1,6 +1,5 @@
 import { GluegunCommand } from 'gluegun'
 import { chatGPTPrompt } from '../../ai/openai'
-import { retryOnFail } from '../../utils/retryOnFail'
 import { parseGitDiff } from '../../utils/parseGitDiff'
 import { ChatCompletionFunctions } from 'openai'
 
@@ -34,7 +33,52 @@ const command: GluegunCommand = {
 
     // Register the functions that can be called from the AI
     const functions: ChatCompletionFunction[] = [
-      // Create a file
+      // Patch a file
+      {
+        name: 'patch',
+        description: `Allows replacing or deleting the first matching string in a given file.`,
+        parameters: {
+          type: 'object',
+          properties: {
+            file: {
+              type: 'string',
+              description: 'The file to patch',
+            },
+            instructions: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  replace: {
+                    type: 'string',
+                    description: 'Replace this string with the insert string',
+                  },
+                  insert: {
+                    type: 'string',
+                    description: 'Insert this string',
+                  },
+                },
+              },
+            },
+          },
+          required: ['file', 'instructions'],
+        },
+        fn: async (args) => {
+          const { file, instructions } = args
+          for (let instruction of instructions) {
+            const { insert, replace } = instruction
+
+            const fileContents = await filesystem.readAsync(file, 'utf8')
+
+            // Replace the string
+            const patchedFileContents = fileContents.replace(replace, insert)
+
+            // Write the file
+            await filesystem.writeAsync(file, patchedFileContents)
+          }
+        },
+      },
+
       {
         name: 'createFile',
         description: 'Create a file',
@@ -70,7 +114,7 @@ const command: GluegunCommand = {
           required: ['contents'],
         },
         fn: (args) => {
-          console.error(args)
+          console.error(args?.contents)
         },
       },
       {
@@ -233,122 +277,106 @@ const command: GluegunCommand = {
         continue
       }
 
-      // Now use OpenAI to convert the file
-      const diffPrompt = `
-Using this git diff of a typical ${file} in a React Native ${currentVersion} app being upgraded to ${targetVersion}:
+      //       // Now use OpenAI to convert the file
+      //       const diffPrompt = `
+      // Using this git diff of a typical ${file} in a React Native ${currentVersion} app being upgraded to ${targetVersion}:
 
-\`\`\`
-${fileDiff}
-\`\`\`
+      // \`\`\`
+      // ${fileDiff}
+      // \`\`\`
 
-... explain to me in bullet points what needs to be done to the file, assuming that the file we're
-applying it to might have customizations we would want to keep. Assume your audience is yourself,
-for a future chat session where you will not have any other context. Give specific instructions,
-not general instructions.
-    `
+      // ... explain to me in bullet points what needs to be done to the file, assuming that the file we're
+      // applying it to might have customizations we would want to keep. Assume your audience is yourself,
+      // for a future chat session where you will not have any other context. Give specific instructions,
+      // not general instructions.
 
-      // print.info(diffPrompt)
+      // Instead of "RnDiffApp" in your instructions, always use "${appDisplayName}".
+      //     `
 
-      var instructions = await retryOnFail(() =>
-        chatGPTPrompt({
-          messages: [
-            {
-              content: diffPrompt,
-              role: 'system',
-            },
-          ],
-          model: 'gpt-3.5-turbo',
-        })
-      )
+      //       // print.info(diffPrompt)
 
-      instructions = instructions.content
+      //       var instructions = await retryOnFail(() =>
+      //         chatGPTPrompt({
+      //           messages: [
+      //             {
+      //               content: diffPrompt,
+      //               role: 'system',
+      //             },
+      //           ],
+      //           model: 'gpt-3.5-turbo',
+      //         })
+      //       )
 
-      // make sure we got instructions
-      if (!instructions || instructions.startsWith('ERROR:')) {
-        print.error(`No instructions for ${localFile}.`)
-        fileSpinner.stopAndPersist({
-          symbol: '🙈',
-          text: `Skipping binary patch for ${file}`,
-        })
-        continue
-      }
+      //       instructions = instructions.content
+
+      //       // make sure we got instructions
+      //       if (!instructions || instructions.startsWith('ERROR:')) {
+      //         print.error(`No instructions for ${localFile}.`)
+      //         fileSpinner.stopAndPersist({
+      //           symbol: '🙈',
+      //           text: `Skipping binary patch for ${file}`,
+      //         })
+      //         continue
+      //       }
 
       // now create a prompt for OpenAI to convert the file
       const orientation = `
 You are a helper bot that is helping a developer upgrade their React Native app
-from ${currentVersion} to ${targetVersion} using a Node script.
-This script will use your response to convert the file ${localFile}.
+from ${currentVersion} to ${targetVersion}.
 `
 
       const prompt = `
-With this file named ${localFile}:
+With this file located at ${localFile}:
 
 \`\`\`
 ${sourceFileContents}
 \`\`\`
 
-The git diff for an unmodified React Native app between those versions looks like this:
+We have a diff to apply, but it was generated for a non-modified version of this file.
 
-\`\`\`diff
+\`\`\`
 ${fileDiff}
 \`\`\`
 
-According to a previous chat session, the following instructions to apply the changes in this diff
-were given below; however, keep in mind that GPT-3.5 was used to generate these, so they may not be perfect.
-
-${instructions}
-
 Bias toward keeping existing modifications to the existing code, except for things that
 are specifically called out as needing to be changed in the diff.
+
+Match the style of the existing code, including indentation, quotation style, spacing, and line breaks.
 `
 
       const admonishments = `
-IMPORTANT NOTES:
-
-Return the new file in a code block, formatted and indented correctly so we can save it back to the original file.
-Return only the full file contents and no other explanation or notes.
-If there is no changes necessary, just say "NO CHANGES NEEDED FOR UPGRADE" and that is it, don't do anything else.
-Our tool relies on detecting the string "NO CHANGES NEEDED FOR UPGRADE" for no changes.
-
-Do not output "Here is the modified file" or anything like it.
-We only want the modified code for upgrading! This is important!
-If you output additional text, our tool will not be able to extract the
-modified code and replace the original code with it.
-
-If you output three backticks before and after, we will simply strip them before
-saving them to the file. So you can use them for formatting if you want.
+      
 `
 
       try {
         var convertedObj = await chatGPTPrompt({
           functions,
           messages: [
-            // {
-            //   content: orientation,
-            //   role: 'system',
-            // },
-            // {
-            //   content: prompt,
-            //   role: 'user',
-            // },
-            // {
-            //   content: admonishments,
-            //   role: 'system',
-            // },
             {
-              content: `Make a file that contains the text "Hello, world!" and save it as ./hello.txt`,
+              content: orientation,
+              role: 'system',
+            },
+            {
+              content: prompt,
               role: 'user',
+            },
+            {
+              content: admonishments,
+              role: 'system',
             },
           ],
           model: 'gpt-4',
         })
 
         console.log({ convertedObj })
-        var converted = convertedObj.content
+        // var converted = convertedObj.content
 
         await handleFunctionCall(convertedObj, functions)
 
-        process.exit(0)
+        fileSpinner.stopAndPersist({
+          symbol: '✅',
+          text: `Converted ${localFile}.`,
+        })
       } catch (e) {
         // catching any conversion errors
         print.error(e)
@@ -356,29 +384,29 @@ saving them to the file. So you can use them for formatting if you want.
       }
 
       // if we didn't get a converted file, continue
-      if (!converted) {
-        fileSpinner.stopAndPersist({
-          symbol: '🙈',
-          text: `No conversion generated for ${localFile}.`,
-        })
-        continue
-      } else if (converted.includes('NO CHANGES NEEDED FOR UPGRADE')) {
-        // if the file didn't need to be changed, mark it as such
-        fileSpinner.stopAndPersist({
-          symbol: '🙈',
-          text: `No changes needed for ${localFile}.`,
-        })
-      } else {
-        // strip out the backticks only from the beginning and end of the converted file
-        // also strip any newlines from the beginning (only) of the file
-        const newContents = converted.replace(/^```/, '').replace(/```$/, '').replace(/^\n/, '')
+      // if (!converted) {
+      //   fileSpinner.stopAndPersist({
+      //     symbol: '🙈',
+      //     text: `No conversion generated for ${localFile}.`,
+      //   })
+      //   continue
+      // } else if (converted.includes('NO CHANGES NEEDED FOR UPGRADE')) {
+      //   // if the file didn't need to be changed, mark it as such
+      //   fileSpinner.stopAndPersist({
+      //     symbol: '🙈',
+      //     text: `No changes needed for ${localFile}.`,
+      //   })
+      // } else {
+      //   // strip out the backticks only from the beginning and end of the converted file
+      //   // also strip any newlines from the beginning (only) of the file
+      //   const newContents = converted.replace(/^```/, '').replace(/```$/, '').replace(/^\n/, '')
 
-        // write the file to the filesystem
-        await filesystem.writeAsync(localFile, newContents)
+      //   // write the file to the filesystem
+      //   await filesystem.writeAsync(localFile, newContents)
 
-        // Stop the spinner and mark the file as converted before continuing to the next file
-        fileSpinner.succeed(`Converted ${localFile}`)
-      }
+      //   // Stop the spinner and mark the file as converted before continuing to the next file
+      //   fileSpinner.succeed(`Converted ${localFile}`)
+      // }
     }
 
     // Final success message

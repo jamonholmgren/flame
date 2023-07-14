@@ -20,7 +20,7 @@ async function run(argv) {
       // 'prompt',
       // 'http',
       'template',
-      'patching',
+      // 'patching',
       'package-manager',
     ])
     .create()
