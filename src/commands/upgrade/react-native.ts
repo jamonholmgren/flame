@@ -78,7 +78,6 @@ const command: GluegunCommand = {
           }
         },
       },
-
       {
         name: 'createFile',
         description: 'Create a file',
@@ -115,24 +114,6 @@ const command: GluegunCommand = {
         },
         fn: (args) => {
           console.error(args?.contents)
-        },
-      },
-      {
-        name: 'prettyPrint',
-        description: 'Pretty print a JSON object to the console',
-        parameters: {
-          type: 'object',
-          properties: {
-            contents: {
-              type: 'object',
-              additionalProperties: true,
-              description: 'The JSON object to pretty print.',
-            },
-          },
-          required: ['contents'],
-        },
-        fn: (args) => {
-          console.dir(args)
         },
       },
     ]
@@ -224,6 +205,8 @@ const command: GluegunCommand = {
     // loop through each file and ask OpenAI to convert it using the diff for that file
     for (const file in files) {
       const fileDiff = files[file]
+
+      // TODO: have the AI figure out which files need to be modified/renamed/etc
 
       // Ignore binary files and files in ignoreFiles list
       if (fileDiff.includes('GIT binary patch')) {

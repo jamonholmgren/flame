@@ -47,7 +47,7 @@ const command: GluegunCommand = {
     // ensure there's a recipe for this conversion
     let recipe: Recipe
     try {
-      const recipeExport = require(`../recipes/${from}-to-${to}`) as { recipe: Recipe }
+      const recipeExport = require(`../recipes/convert/${from}-to-${to}`) as { recipe: Recipe }
       recipe = recipeExport.recipe
     } catch (e) {
       print.error(`No recipe found for converting from ${from} to ${to}`)
