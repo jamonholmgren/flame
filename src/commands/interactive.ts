@@ -17,9 +17,15 @@ const initialPrompt: ChatCompletionRequestMessage = {
 You are a bot that helps a developer build and modify software.
 You understand instructions and can make the changes yourself.
 The developer can also ask you questions about anything and you respond.
+Before making changes to a file, if the file has not yet been read
+into the chat backlog, then you can read the file first and we will
+report back with the contents of that file so you can figure out
+where to make changes.
   `,
   role: 'system',
 }
+
+const debugLog: any[] = [initialPrompt]
 
 const command: GluegunCommand = {
   name: 'interactive',
@@ -133,13 +139,7 @@ const command: GluegunCommand = {
 
           // Return the contents
           return {
-            content: `
-${args.path} contains:
-
-\`\`\`
-${contents}
-\`\`\`
-`,
+            content: `Here is the file you requested (${args.path}):\n\n` + contents,
             resubmit: true,
           }
         },
@@ -148,18 +148,16 @@ ${contents}
 
     // Helper function to handle function calls
     async function handleFunctionCall(response, functions: typeof aiFunctions) {
-      if (response.function_call) {
-        const functionName = response.function_call.name
-        const functionArgs = JSON.parse(response.function_call.arguments)
+      const functionName = response.function_call.name
+      const functionArgs = JSON.parse(response.function_call.arguments)
 
-        // Look up function in the registry and call it with the parsed arguments
-        const func = functions.find((f) => f.name === functionName)
+      // Look up function in the registry and call it with the parsed arguments
+      const func = functions.find((f) => f.name === functionName)
 
-        if (func) {
-          return func.fn(functionArgs)
-        } else {
-          return { error: `Function '${functionName}' is not registered.` }
-        }
+      if (func) {
+        return func.fn(functionArgs)
+      } else {
+        return { error: `Function '${functionName}' is not registered.` }
       }
     }
 
@@ -168,67 +166,80 @@ ${contents}
 
     // interactive loop
     while (true) {
-      // show an interactive prompt if not resubmitting
-      const result =
-        resubmitCounter !== undefined
-          ? {
-              // resubmitting with more information
-              chatMessage: `Please continue.`,
-            }
-          : await prompt.ask({
-              type: 'input',
-              name: 'chatMessage',
-              message: '> ',
-            })
+      if (resubmitCounter) {
+        // no need to add another message, just submit what we have again
+      } else {
+        // show an interactive prompt if not resubmitting
+        const result = await prompt.ask({
+          type: 'input',
+          name: 'chatMessage',
+          message: '> ',
+        })
 
-      // if the prompt is empty, skip it
-      if (result.chatMessage === '') continue
-
-      // if the prompt is "exit", exit the loop
-      if (result.chatMessage === 'exit') break
-
-      // if the prompt is "debug", print the previous messages
-      if (result.chatMessage === 'debug') {
-        print.info(prevMessages)
-        continue
-      }
-
-      // if the prompt starts with "load ", load a file into the prompt
-      if (result.chatMessage.startsWith('load ')) {
-        // TODO: have the AI figure out what file to load, and use a function call to do it
-
-        // get the file name
-        const fileName = result.chatMessage.slice(5)
-
-        // read the file
-        const fileContents = await filesystem.readAsync(`${workingFolder}/${fileName}`, 'utf8')
-
-        // add the file contents to the prompt
         const newMessage: ChatCompletionRequestMessage = {
-          content: `
-Here's the contents of ${fileName}:
-
-\`\`\`
-${fileContents}
-\`\`\`
-        `,
+          content: result.chatMessage,
           role: 'user',
+        }
+
+        // if the prompt is empty, skip it
+        if (result.chatMessage === '') continue
+
+        // if the prompt is "exit", exit the loop
+        if (result.chatMessage === 'exit') break
+
+        // if the prompt is "debug", print the previous messages
+        if (result.chatMessage === 'debug') {
+          print.info(debugLog)
+          continue
+        }
+
+        // if the prompt is "log", print the chat log
+        if (result.chatMessage === 'log') {
+          print.info(prevMessages)
+          continue
+        }
+
+        // if the prompt starts with "load ", load a file into the prompt
+        if (result.chatMessage.startsWith('load ')) {
+          // TODO: have the AI figure out what file to load, and use a function call to do it
+
+          // get the file name
+          const fileName = result.chatMessage.slice(5)
+
+          // read the file
+          const fileContents = await filesystem.readAsync(`${workingFolder}/${fileName}`, 'utf8')
+
+          // add the file contents to the prompt
+          const newMessage: ChatCompletionRequestMessage = {
+            content: `
+  Here's the contents of ${fileName}:
+
+  \`\`\`
+  ${fileContents}
+  \`\`\`
+          `,
+            role: 'user',
+          }
+
+          // add the new message to the list of previous messages
+          prevMessages.push(newMessage)
+
+          // print that we loaded it
+          print.info(`Loaded ${fileName} (${fileContents.length} characters)`)
+
+          // run again
+          continue
         }
 
         // add the new message to the list of previous messages
         prevMessages.push(newMessage)
 
-        // print that we loaded it
-        print.info(`Loaded ${fileName} (${fileContents.length} characters)`)
-
-        // run again
-        continue
+        // add the message for debugging
+        debugLog.push(newMessage)
       }
 
-      const newMessage: ChatCompletionRequestMessage = { content: result.chatMessage, role: 'user' }
-
-      // add the new message to the list of previous messages
-      prevMessages.push(newMessage)
+      // log the last message
+      print.info(prevMessages[prevMessages.length - 1].content)
 
       // send to ChatGPT
       const response = await chatGPTPrompt({
@@ -236,27 +247,41 @@ ${fileContents}
         messages: [initialPrompt, ...prevMessages],
       })
 
+      // log the response for debugging
+      debugLog.push(response)
+
+      // print and log the response content
+      if (response.content) {
+        print.info(response.content)
+        prevMessages.push({ content: response.content, role: 'assistant' })
+      }
+
       // handle function calls
-      const functionCallResponse = await handleFunctionCall(response, aiFunctions)
+      if (response.function_call) {
+        const functionCallResponse = await handleFunctionCall(response, aiFunctions)
+        if (functionCallResponse.content) {
+          print.info(functionCallResponse.content)
+          prevMessages.push({ content: functionCallResponse.content, role: 'user' })
+        } else if (functionCallResponse.error) {
+          print.error(functionCallResponse.error)
+          prevMessages.push({ content: functionCallResponse.error, role: 'user' })
+        }
+        debugLog.push(functionCallResponse)
 
-      // print the response
-      print.info(response.content + '\n\n' + functionCallResponse)
+        if (functionCallResponse.resubmit) {
+          // increment the resubmit counter
+          resubmitCounter = resubmitCounter ? resubmitCounter + 1 : 1
 
-      // add the response to the list of previous messages
-      prevMessages.push({
-        content: `${response.content}\n\n${functionCallResponse}`,
-        role: 'assistant',
-      })
-
-      if (functionCallResponse.resubmit) {
-        // increment the resubmit counter
-        resubmitCounter = resubmitCounter ? resubmitCounter + 1 : 1
-
-        // if we've resubmitted too many times, stop that
-        if (resubmitCounter > 5) {
-          print.error('Too many resubmits.')
+          // if we've resubmitted too many times, stop that
+          if (resubmitCounter > 5) {
+            print.error('Too many resubmits.')
+            resubmitCounter = undefined
+          }
+        } else {
           resubmitCounter = undefined
         }
+      } else {
+        resubmitCounter = undefined
       }
 
       // run again
