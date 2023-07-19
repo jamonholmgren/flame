@@ -25,7 +25,7 @@ const command: GluegunCommand = {
     const workingFolder: string = parameters.first
 
     // define our chatgpt functions
-    const functions: ChatCompletionFunction[] = [
+    const aiFunctions: ChatCompletionFunction[] = [
       // Patch a file
       {
         name: 'patch',
@@ -58,6 +58,10 @@ const command: GluegunCommand = {
         },
         fn: async (args) => {
           const { file, instructions } = args
+
+          // construct a response
+          let response = `Updated ${file}:\n\n`
+
           for (let instruction of instructions) {
             const { insert, replace } = instruction
 
@@ -67,10 +71,14 @@ const command: GluegunCommand = {
             const patchedFileContents = fileContents.replace(replace, insert)
 
             // Write the file
-            // await filesystem.writeAsync(file, patchedFileContents)
-            // dry run -- just console log the instruction
-            console.log(`Replace: ${file}\n\n"${replace}"\n\nwith\n\n"${insert}"`)
+            await filesystem.writeAsync(file, patchedFileContents)
+
+            // Add to the response
+            response += `Replaced\n\n"${replace}"\nwith\n"${insert}"\n\n`
           }
+
+          // return the response
+          return response
         },
       },
       {
@@ -99,6 +107,23 @@ const command: GluegunCommand = {
       },
     ]
 
+    // Helper function to handle function calls
+    async function handleFunctionCall(response, functions: typeof aiFunctions) {
+      if (response.function_call) {
+        const functionName = response.function_call.name
+        const functionArgs = JSON.parse(response.function_call.arguments)
+
+        // Look up function in the registry and call it with the parsed arguments
+        const func = functions.find((f) => f.name === functionName)
+
+        if (func) {
+          return func.fn(functionArgs)
+        } else {
+          return `Function '${functionName}' is not registered.`
+        }
+      }
+    }
+
     // interactive loop
     while (true) {
       // show an interactive prompt
@@ -113,6 +138,12 @@ const command: GluegunCommand = {
 
       // if the prompt is "exit", exit the loop
       if (result.chatMessage === 'exit') break
+
+      // if the prompt is "debug", print the previous messages
+      if (result.chatMessage === 'debug') {
+        print.info(prevMessages)
+        continue
+      }
 
       // if the prompt starts with "load ", load a file into the prompt
       if (result.chatMessage.startsWith('load ')) {
@@ -150,18 +181,24 @@ ${fileContents}
 
       // send to ChatGPT
       const response = await chatGPTPrompt({
-        functions,
+        functions: aiFunctions,
         messages: [initialPrompt, ...prevMessages, newMessage],
       })
 
+      // handle function calls
+      const functionCallResponse = await handleFunctionCall(response, aiFunctions)
+
       // print the response
-      print.info(response)
+      print.info(response.content + '\n\n' + functionCallResponse)
 
       // add the new message to the list of previous messages
       prevMessages.push(newMessage)
 
       // add the response to the list of previous messages
-      prevMessages.push({ content: response.content, role: 'assistant' })
+      prevMessages.push({
+        content: response.content + '\n\n' + functionCallResponse,
+        role: 'assistant',
+      })
 
       // run again
     }
