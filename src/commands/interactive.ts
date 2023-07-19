@@ -2,7 +2,13 @@ import { GluegunCommand } from 'gluegun'
 import { chatGPTPrompt } from '../ai/openai'
 import { ChatCompletionFunctions, ChatCompletionRequestMessage } from 'openai'
 
-type ChatCompletionFunction = ChatCompletionFunctions & { fn: (args: any) => void }
+type ChatCompletionFunction = ChatCompletionFunctions & {
+  fn: (args: any) => Promise<{
+    content?: string
+    resubmit?: boolean
+    error?: string
+  }>
+}
 
 const prevMessages: ChatCompletionRequestMessage[] = []
 
@@ -78,7 +84,9 @@ const command: GluegunCommand = {
           }
 
           // return the response
-          return response
+          return {
+            content: response,
+          }
         },
       },
       {
@@ -103,6 +111,37 @@ const command: GluegunCommand = {
 
           // dry run -- just console log the instruction
           console.log(`Create file: ${args.path}\n\n${args.contents}`)
+
+          return { content: `Created file ${args.path}` }
+        },
+      },
+      {
+        name: 'readFileAndReportBack',
+        description: 'Read a file and report back with the contents',
+        parameters: {
+          type: 'object',
+          properties: {
+            path: {
+              type: 'string',
+              description: 'The path of the file to read.',
+            },
+          },
+        },
+        fn: async (args) => {
+          // Read the file
+          const contents = await filesystem.readAsync(args.path, 'utf8')
+
+          // Return the contents
+          return {
+            content: `
+${args.path} contains:
+
+\`\`\`
+${contents}
+\`\`\`
+`,
+            resubmit: true,
+          }
         },
       },
     ]
@@ -119,19 +158,28 @@ const command: GluegunCommand = {
         if (func) {
           return func.fn(functionArgs)
         } else {
-          return `Function '${functionName}' is not registered.`
+          return { error: `Function '${functionName}' is not registered.` }
         }
       }
     }
 
+    // resubmit counter to ensure that we don't get stuck in a loop
+    let resubmitCounter: undefined | number = undefined
+
     // interactive loop
     while (true) {
-      // show an interactive prompt
-      const result = await prompt.ask({
-        type: 'input',
-        name: 'chatMessage',
-        message: '> ',
-      })
+      // show an interactive prompt if not resubmitting
+      const result =
+        resubmitCounter !== undefined
+          ? {
+              // resubmitting with more information
+              chatMessage: `Please continue.`,
+            }
+          : await prompt.ask({
+              type: 'input',
+              name: 'chatMessage',
+              message: '> ',
+            })
 
       // if the prompt is empty, skip it
       if (result.chatMessage === '') continue
@@ -179,10 +227,13 @@ ${fileContents}
 
       const newMessage: ChatCompletionRequestMessage = { content: result.chatMessage, role: 'user' }
 
+      // add the new message to the list of previous messages
+      prevMessages.push(newMessage)
+
       // send to ChatGPT
       const response = await chatGPTPrompt({
         functions: aiFunctions,
-        messages: [initialPrompt, ...prevMessages, newMessage],
+        messages: [initialPrompt, ...prevMessages],
       })
 
       // handle function calls
@@ -191,14 +242,22 @@ ${fileContents}
       // print the response
       print.info(response.content + '\n\n' + functionCallResponse)
 
-      // add the new message to the list of previous messages
-      prevMessages.push(newMessage)
-
       // add the response to the list of previous messages
       prevMessages.push({
-        content: response.content + '\n\n' + functionCallResponse,
+        content: `${response.content}\n\n${functionCallResponse}`,
         role: 'assistant',
       })
+
+      if (functionCallResponse.resubmit) {
+        // increment the resubmit counter
+        resubmitCounter = resubmitCounter ? resubmitCounter + 1 : 1
+
+        // if we've resubmitted too many times, stop that
+        if (resubmitCounter > 5) {
+          print.error('Too many resubmits.')
+          resubmitCounter = undefined
+        }
+      }
 
       // run again
     }
