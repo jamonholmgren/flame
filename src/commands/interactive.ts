@@ -34,7 +34,7 @@ const command: GluegunCommand = {
     const { print, parameters, prompt, filesystem } = toolbox
 
     // first parameter is the folder we want to work in
-    const workingFolder: string = parameters.first
+    const workingFolder: string = filesystem.path(parameters.first)
 
     // define our chatgpt functions
     const aiFunctions: ChatCompletionFunction[] = [
@@ -70,6 +70,11 @@ const command: GluegunCommand = {
         },
         fn: async (args) => {
           const { file, instructions } = args
+
+          // ensure that the path is not any higher than the working folder
+          if (filesystem.path(file).startsWith(workingFolder) === false) {
+            return { error: 'Cannot update a file outside of the working folder.' }
+          }
 
           // construct a response
           let response = `Updated ${file}:\n\n`
@@ -112,8 +117,13 @@ const command: GluegunCommand = {
           },
         },
         fn: async (args) => {
+          // ensure that the path is not any higher than the working folder
+          if (filesystem.path(args.path).startsWith(workingFolder) === false) {
+            return { error: 'Cannot create a file outside of the working folder.' }
+          }
+
           // Create the file
-          // await filesystem.writeAsync(args.path, args.contents)
+          await filesystem.writeAsync(args.path, args.contents)
 
           // dry run -- just console log the instruction
           console.log(`Create file: ${args.path}\n\n${args.contents}`)
@@ -140,6 +150,29 @@ const command: GluegunCommand = {
           // Return the contents
           return {
             content: `Here is the file you requested (${args.path}):\n\n` + contents,
+            resubmit: true,
+          }
+        },
+      },
+      {
+        name: 'listFilesAndReportBack',
+        description: 'List files and subfolders in a folder and reports back with a list',
+        parameters: {
+          type: 'object',
+          properties: {
+            path: {
+              type: 'string',
+              description: 'The path of the folder to list the contents of.',
+            },
+          },
+        },
+        fn: async (args) => {
+          // List the files
+          const files = await filesystem.listAsync(args.path)
+
+          // Return the contents
+          return {
+            content: `Here are the files you requested (${args.path}):\n\n` + files.join('\n'),
             resubmit: true,
           }
         },
@@ -252,7 +285,6 @@ const command: GluegunCommand = {
 
       // print and log the response content
       if (response.content) {
-        print.info(response.content)
         prevMessages.push({ content: response.content, role: 'assistant' })
       }
 
