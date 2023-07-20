@@ -1,6 +1,15 @@
 import { filesystem, print } from 'gluegun'
+import { ChatCompletionFunctions } from 'openai'
 
-export const aiFunctions = [
+type ChatCompletionFunction = ChatCompletionFunctions & {
+  fn: (args: any) => Promise<{
+    content?: string
+    resubmit?: boolean
+    error?: string
+  }>
+}
+
+export const aiFunctions: ChatCompletionFunction[] = [
   {
     name: 'patch',
     description: `Allows replacing or deleting the first matching string in a given file.`,

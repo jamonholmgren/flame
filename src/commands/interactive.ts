@@ -1,15 +1,8 @@
 import { GluegunCommand } from 'gluegun'
 import { chatGPTPrompt } from '../ai/openai'
-import { ChatCompletionFunctions, ChatCompletionRequestMessage } from 'openai'
+import { ChatCompletionRequestMessage } from 'openai'
 import { ageMessages } from '../utils/ageMessages'
-
-type ChatCompletionFunction = ChatCompletionFunctions & {
-  fn: (args: any) => Promise<{
-    content?: string
-    resubmit?: boolean
-    error?: string
-  }>
-}
+import { aiFunctions } from '../ai/functions'
 
 type Message = ChatCompletionRequestMessage & {
   age?: number
@@ -40,9 +33,6 @@ const command: GluegunCommand = {
 
     // first parameter is the folder we want to work in
     const workingFolder: string = filesystem.path(parameters.first)
-
-    // define our chatgpt functions
-    const aiFunctions: ChatCompletionFunction[] = require('../ai/functions')
 
     // Helper function to handle function calls
     async function handleFunctionCall(response, functions: typeof aiFunctions) {
@@ -83,6 +73,7 @@ const command: GluegunCommand = {
         // no need to add another message, just submit what we have again
       } else {
         // show an interactive prompt if not resubmitting
+        print.info('')
         const result = await prompt.ask({
           type: 'input',
           name: 'chatMessage',

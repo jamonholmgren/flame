@@ -3,7 +3,11 @@ function calcLength(messages: any[]) {
   return messages.reduce((sum, msg) => sum + msg.content.length, 0)
 }
 
-export function ageMessages(messages: any[], maxLength = 12000) {
+export function ageMessages(allMessages: any[], maxLength = 12000) {
+  // Separate the last three messages
+  const lastThreeMessages = allMessages.slice(-3)
+  let messages = allMessages.slice(0, -3)
+
   // Calculate the total length of all messages
   let totalLength = calcLength(messages)
 
@@ -18,7 +22,8 @@ export function ageMessages(messages: any[], maxLength = 12000) {
 
         // If age is <= 5, cut the content in half
         if (msg.age <= 5) {
-          msg.content = msg.content.slice(0, msg.content.length / 2) + '...<rest omitted for brevity>'
+          msg.content =
+            msg.content.slice(0, msg.content.length / 2) + '...<rest omitted for brevity>'
         }
 
         // If age is <= 0, edit the content to truncate to 20 characters
@@ -37,5 +42,5 @@ export function ageMessages(messages: any[], maxLength = 12000) {
     if (!somethingAged) break
   }
 
-  return messages
+  return [...messages, ...lastThreeMessages]
 }
