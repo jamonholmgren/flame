@@ -1,4 +1,5 @@
 import { print } from 'gluegun'
+import { ageMessages } from './ageMessages'
 
 export function handleSpecialCommand(command: string, prevMessages: any[], debugLog: any[]) {
   // if the prompt is empty, skip it and try again
@@ -27,6 +28,14 @@ export function handleSpecialCommand(command: string, prevMessages: any[], debug
   if (command === 'clearlast') {
     prevMessages.pop()
     print.info('Last message cleared.')
+    return true
+  }
+
+  // if the prompt starts with "logcompress", logcompress the chat log
+  if (command === 'logcompress' || command.startsWith('logcompress ')) {
+    const targetLength = parseInt(command.split(' ')[1], 10) || 8000
+    ageMessages(prevMessages, targetLength)
+    print.info(`Chat log compressed to ${targetLength} characters.`)
     return true
   }
 
