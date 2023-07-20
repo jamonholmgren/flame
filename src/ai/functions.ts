@@ -49,42 +49,37 @@ export const aiFunctions: ChatCompletionFunction[] = [
       }
 
       // construct a response
-      let response = `Updated ${file}:
+      let response = {
+        file,
+        patches: 0,
+      }
 
-`
+      let fileContents = await filesystem.readAsync(file, 'utf8')
+
+      // if the file doesn't exist, return an error
+      if (fileContents === undefined) {
+        return { error: `File '${file}' does not exist.` }
+      }
 
       for (let instruction of instructions) {
         const { insert, replace } = instruction
 
-        const fileContents = await filesystem.readAsync(file, 'utf8')
-
-        // if the file doesn't exist, return an error
-        if (fileContents === undefined) {
-          return { error: `File '${file}' does not exist.` }
-        }
-
         // Replace the string
-        const patchedFileContents = fileContents.replace(replace, insert)
-
-        // Write the file
-        await filesystem.writeAsync(file, patchedFileContents)
-
-        // Add to the response
-        response += `Replaced
-
-"${replace}"
-with
-"${insert}"
-
-`
+        if (fileContents.includes(replace)) {
+          fileContents = fileContents.replace(replace, insert)
+          // increment the number of patches
+          response.patches++
+        }
       }
 
-      print.info(`Updated ${file}.
-`)
+      // Write the file
+      await filesystem.writeAsync(file, fileContents)
+
+      print.info(`Updated ${file} with ${response.patches}.`)
 
       // return the response
       return {
-        content: response,
+        content: JSON.stringify(response),
       }
     },
   },
@@ -103,6 +98,7 @@ with
           description: 'The contents of the file to create.',
         },
       },
+      required: ['path', 'contents'],
     },
     fn: async (args) => {
       // ensure that the path is not any higher than the working folder
@@ -115,7 +111,7 @@ with
 
       print.info(`Created ${args.path}.`)
 
-      return { content: `Created file ${args.path}` }
+      return { content: JSON.stringify({ path: args.path }) }
     },
   },
   {
@@ -129,6 +125,7 @@ with
           description: 'The path of the file to read.',
         },
       },
+      required: ['path'],
     },
     fn: async (args) => {
       // Read the file
@@ -142,7 +139,7 @@ with
 
       // Return the contents
       return {
-        content: `Here is the file you requested (${args.path}):` + contents,
+        content: JSON.stringify({ path: args.path, contents }),
         resubmit: true,
       }
     },
@@ -158,16 +155,17 @@ with
           description: 'The path of the folder to list the contents of.',
         },
       },
+      required: ['path'],
     },
     fn: async (args) => {
       // List the files
       const files = await filesystem.listAsync(args.path)
 
-      print.info(`Found ${files.length} at ${args.path}\n`)
+      print.info(`Found ${files.length} at path: ${args.path}\n`)
 
       // Return the contents
       return {
-        content: `Here are the files you requested (${args.path}):\n\n` + files.join('\n'),
+        content: JSON.stringify({ path: args.path, files }),
         resubmit: true,
       }
     },

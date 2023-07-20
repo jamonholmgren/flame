@@ -53,6 +53,9 @@ const command: GluegunCommand = {
         content: result.chatMessage,
         role: 'user',
         age: 100,
+        importance: result.chatMessage.toLowerCase().startsWith('important:')
+          ? 'important'
+          : 'normal',
       }
 
       // if the prompt is "exit", exit the loop
@@ -96,8 +99,10 @@ const command: GluegunCommand = {
         if (response.content) {
           print.info(``)
           print.info(`${response.content}`)
-          prevMessages.push({ content: response.content, role: 'assistant', age: 10 })
         }
+
+        // add the response to the chat log
+        prevMessages.push({ ...response, age: 10 })
 
         // handle function calls
         if (!response.function_call) break // no function call, so we're done with this loop
@@ -109,13 +114,24 @@ const command: GluegunCommand = {
         // if we have an error, print it and stop
         if (functionCallResponse.error) {
           print.error(functionCallResponse.error)
-          prevMessages.push({ content: functionCallResponse.error, role: 'user', age: 5 })
+          prevMessages.push({
+            content: 'Error: ' + functionCallResponse.error,
+            role: 'function',
+            name: response.function_call.name,
+            age: 5,
+          })
           break
         }
 
         // add the response to the chat log
         if (functionCallResponse.content) {
-          prevMessages.push({ content: functionCallResponse.content, role: 'user', age: 5 })
+          prevMessages.push({
+            content: functionCallResponse.content,
+            role: 'function',
+            name: response.function_call.name,
+            age: 5,
+            importance: 'normal',
+          })
         }
 
         // if we don't have a resubmit, we're done with this loop
