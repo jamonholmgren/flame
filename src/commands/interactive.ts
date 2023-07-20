@@ -27,7 +27,15 @@ const command: GluegunCommand = {
     const saveHistory = parameters.options.history !== false
 
     // if they don't submit --no-history, then we will load the chat history
-    if (saveHistory) prevMessages = await loadChatHistory(workingFolder)
+    if (saveHistory) {
+      const spinner = print.spin('Loading chat history...')
+      try {
+        prevMessages = await loadChatHistory(workingFolder)
+        spinner.succeed('Chat history loaded.')
+      } catch (error) {
+        spinner.fail('Failed to load chat history.')
+      }
+    }
 
     // interactive loop
     while (true) {
