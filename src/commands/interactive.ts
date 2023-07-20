@@ -1,14 +1,10 @@
 import { GluegunCommand } from 'gluegun'
 import { chatGPTPrompt } from '../ai/openai'
-import { ChatCompletionRequestMessage } from 'openai'
 import { ageMessages } from '../utils/ageMessages'
 import { aiFunctions } from '../ai/functions'
 import { loadChatHistory, saveChatHistory } from '../utils/chatHistory'
 import { loadFile } from '../utils/loadFile'
-
-type Message = ChatCompletionRequestMessage & {
-  age?: number
-}
+import type { Message } from '../types'
 
 let prevMessages: Message[] = []
 

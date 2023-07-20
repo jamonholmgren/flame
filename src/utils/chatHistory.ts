@@ -1,11 +1,7 @@
 // Helper functions for handling chat history
 
 import { filesystem } from 'gluegun'
-import { ChatCompletionRequestMessage } from 'openai'
-
-type Message = ChatCompletionRequestMessage & {
-  age?: number
-}
+import type { Message } from '../types'
 
 // Load chat history from a file
 export async function loadChatHistory(workingFolder: string): Promise<Message[]> {

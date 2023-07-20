@@ -1,9 +1,5 @@
 import { filesystem } from 'gluegun'
-import { ChatCompletionRequestMessage } from 'openai'
-
-type Message = ChatCompletionRequestMessage & {
-  age?: number
-}
+import type { Message } from '../types'
 
 export async function loadFile(fileName: string, workingFolder: string) {
   // read the file
