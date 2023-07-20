@@ -1,6 +1,7 @@
 import { GluegunCommand } from 'gluegun'
 import { chatGPTPrompt } from '../ai/openai'
 import { ChatCompletionFunctions, ChatCompletionRequestMessage } from 'openai'
+import { ageMessages } from '../utils/ageMessages'
 
 type ChatCompletionFunction = ChatCompletionFunctions & {
   fn: (args: any) => Promise<{
@@ -10,9 +11,13 @@ type ChatCompletionFunction = ChatCompletionFunctions & {
   }>
 }
 
-const prevMessages: ChatCompletionRequestMessage[] = []
+type Message = ChatCompletionRequestMessage & {
+  age?: number
+}
 
-const initialPrompt: ChatCompletionRequestMessage = {
+const prevMessages: Message[] = []
+
+const initialPrompt: Message = {
   content: `
 You are a bot that helps a developer build and modify software.
 You understand instructions and can make the changes yourself.
@@ -56,11 +61,12 @@ const command: GluegunCommand = {
                 properties: {
                   replace: {
                     type: 'string',
-                    description: 'Replace this string with the insert string',
+                    description:
+                      'Replace this string with the insert string (be specific and include whitespace or more lines if necessary to disambiguate which one needs to be replaced)',
                   },
                   insert: {
                     type: 'string',
-                    description: 'Insert this string',
+                    description: 'Insert this string to replace the replace string',
                   },
                 },
               },
@@ -94,6 +100,8 @@ const command: GluegunCommand = {
             response += `Replaced\n\n"${replace}"\nwith\n"${insert}"\n\n`
           }
 
+          print.info(`Updated ${file}.\n`)
+
           // return the response
           return {
             content: response,
@@ -125,9 +133,6 @@ const command: GluegunCommand = {
           // Create the file
           await filesystem.writeAsync(args.path, args.contents)
 
-          // dry run -- just console log the instruction
-          console.log(`Create file: ${args.path}\n\n${args.contents}`)
-
           return { content: `Created file ${args.path}` }
         },
       },
@@ -146,6 +151,12 @@ const command: GluegunCommand = {
         fn: async (args) => {
           // Read the file
           const contents = await filesystem.readAsync(args.path, 'utf8')
+
+          if (contents === undefined) {
+            return { error: `File '${args.path}' does not exist.` }
+          }
+
+          print.info(`Read ${args.path} (${contents.length} characters).\n`)
 
           // Return the contents
           return {
@@ -169,6 +180,8 @@ const command: GluegunCommand = {
         fn: async (args) => {
           // List the files
           const files = await filesystem.listAsync(args.path)
+
+          print.info(`Found ${files.length} at ${args.path}\n`)
 
           // Return the contents
           return {
@@ -194,6 +207,21 @@ const command: GluegunCommand = {
       }
     }
 
+    // if they don't submit --no-history, then we will load the chat history
+    const chatHistoryFile = `${workingFolder}/.config/flame/flame-history.json`
+    if (parameters.options.history !== false) {
+      // make sure the folder exists
+      await filesystem.dirAsync(`${workingFolder}/.config/flame`)
+      // read the chat history
+      const chatHistory = await filesystem.readAsync(chatHistoryFile, 'utf8')
+      // if there is chat history, parse it
+      if (chatHistory) {
+        const parsedChatHistory = JSON.parse(chatHistory)
+        // add the chat history to the previous messages
+        prevMessages.push(...parsedChatHistory)
+      }
+    }
+
     // resubmit counter to ensure that we don't get stuck in a loop
     let resubmitCounter: undefined | number = undefined
 
@@ -206,12 +234,15 @@ const command: GluegunCommand = {
         const result = await prompt.ask({
           type: 'input',
           name: 'chatMessage',
-          message: '> ',
+          message: '→ ',
         })
 
-        const newMessage: ChatCompletionRequestMessage = {
+        print.info('')
+
+        const newMessage: Message = {
           content: result.chatMessage,
           role: 'user',
+          age: 100,
         }
 
         // if the prompt is empty, skip it
@@ -232,6 +263,20 @@ const command: GluegunCommand = {
           continue
         }
 
+        // if the prompt is "clear", clear the chat log
+        if (result.chatMessage === 'clear') {
+          prevMessages.length = 0
+          print.info('Chat log cleared.')
+          continue
+        }
+
+        // if the prompt is "clearlast", clear the last message
+        if (result.chatMessage === 'clearlast') {
+          prevMessages.pop()
+          print.info('Last message cleared.')
+          continue
+        }
+
         // if the prompt starts with "load ", load a file into the prompt
         if (result.chatMessage.startsWith('load ')) {
           // TODO: have the AI figure out what file to load, and use a function call to do it
@@ -243,7 +288,7 @@ const command: GluegunCommand = {
           const fileContents = await filesystem.readAsync(`${workingFolder}/${fileName}`, 'utf8')
 
           // add the file contents to the prompt
-          const newMessage: ChatCompletionRequestMessage = {
+          const newMessage: Message = {
             content: `
   Here's the contents of ${fileName}:
 
@@ -252,6 +297,7 @@ const command: GluegunCommand = {
   \`\`\`
           `,
             role: 'user',
+            age: 5,
           }
 
           // add the new message to the list of previous messages
@@ -272,12 +318,15 @@ const command: GluegunCommand = {
       }
 
       // log the last message
-      print.info(prevMessages[prevMessages.length - 1].content)
+      // print.info(prevMessages[prevMessages.length - 1].content)
+
+      // remove the age property for sending to ChatGPT
+      let strippedMessages = prevMessages.map(({ age, ...restOfMessage }) => restOfMessage)
 
       // send to ChatGPT
       const response = await chatGPTPrompt({
         functions: aiFunctions,
-        messages: [initialPrompt, ...prevMessages],
+        messages: [initialPrompt, ...strippedMessages],
       })
 
       // log the response for debugging
@@ -285,18 +334,20 @@ const command: GluegunCommand = {
 
       // print and log the response content
       if (response.content) {
-        prevMessages.push({ content: response.content, role: 'assistant' })
+        print.info(``)
+        print.info(`${response.content}`)
+        prevMessages.push({ content: response.content, role: 'assistant', age: 10 })
       }
 
       // handle function calls
       if (response.function_call) {
         const functionCallResponse = await handleFunctionCall(response, aiFunctions)
         if (functionCallResponse.content) {
-          print.info(functionCallResponse.content)
-          prevMessages.push({ content: functionCallResponse.content, role: 'user' })
+          // print.info(functionCallResponse.content)
+          prevMessages.push({ content: functionCallResponse.content, role: 'user', age: 5 })
         } else if (functionCallResponse.error) {
           print.error(functionCallResponse.error)
-          prevMessages.push({ content: functionCallResponse.error, role: 'user' })
+          prevMessages.push({ content: functionCallResponse.error, role: 'user', age: 5 })
         }
         debugLog.push(functionCallResponse)
 
@@ -314,6 +365,14 @@ const command: GluegunCommand = {
         }
       } else {
         resubmitCounter = undefined
+      }
+
+      // age messages to avoid going over prompt size
+      ageMessages(prevMessages)
+
+      // persist the chat history
+      if (parameters.options.history !== false) {
+        await filesystem.writeAsync(chatHistoryFile, JSON.stringify(prevMessages))
       }
 
       // run again
