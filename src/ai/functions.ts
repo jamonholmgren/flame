@@ -1,4 +1,4 @@
-import { filesystem } from 'gluegun'
+import { filesystem, print } from 'gluegun'
 
 export const aiFunctions = [
   {
@@ -18,7 +18,8 @@ export const aiFunctions = [
             properties: {
               replace: {
                 type: 'string',
-                description: 'Replace this string with the insert string (be specific and include whitespace or more lines if necessary to disambiguate which one needs to be replaced)',
+                description:
+                  'Replace this string with the insert string (be specific and include whitespace or more lines if necessary to disambiguate which one needs to be replaced)',
               },
               insert: {
                 type: 'string',
@@ -34,7 +35,7 @@ export const aiFunctions = [
       const { file, instructions } = args
 
       // ensure that the path is not any higher than the working folder
-      if (filesystem.path(file).startsWith(workingFolder) === false) {
+      if (filesystem.path(file).startsWith(args.workingFolder) === false) {
         return { error: 'Cannot update a file outside of the working folder.' }
       }
 
@@ -96,12 +97,14 @@ with
     },
     fn: async (args) => {
       // ensure that the path is not any higher than the working folder
-      if (filesystem.path(args.path).startsWith(workingFolder) === false) {
+      if (filesystem.path(args.path).startsWith(args.workingFolder) === false) {
         return { error: 'Cannot create a file outside of the working folder.' }
       }
 
       // Create the file
       await filesystem.writeAsync(args.path, args.contents)
+
+      print.info(`Created ${args.path}.`)
 
       return { content: `Created file ${args.path}` }
     },
@@ -126,14 +129,11 @@ with
         return { error: `File '${args.path}' does not exist.` }
       }
 
-      print.info(`Read ${args.path} (${contents.length} characters).
-`)
+      print.info(`Read ${args.path} (${contents.length} characters).`)
 
       // Return the contents
       return {
-        content: `Here is the file you requested (${args.path}):
-
-` + contents,
+        content: `Here is the file you requested (${args.path}):` + contents,
         resubmit: true,
       }
     },
@@ -154,15 +154,11 @@ with
       // List the files
       const files = await filesystem.listAsync(args.path)
 
-      print.info(`Found ${files.length} at ${args.path}
-`)
+      print.info(`Found ${files.length} at ${args.path}\n`)
 
       // Return the contents
       return {
-        content: `Here are the files you requested (${args.path}):
-
-` + files.join('
-'),
+        content: `Here are the files you requested (${args.path}):\n\n` + files.join('\n'),
         resubmit: true,
       }
     },

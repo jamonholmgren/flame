@@ -53,7 +53,7 @@ const command: GluegunCommand = {
       const func = functions.find((f) => f.name === functionName)
 
       if (func) {
-        return func.fn(functionArgs)
+        return func.fn({ workingFolder, ...functionArgs })
       } else {
         return { error: `Function '${functionName}' is not registered.` }
       }
@@ -175,10 +175,16 @@ const command: GluegunCommand = {
       // remove the age property for sending to ChatGPT
       let strippedMessages = prevMessages.map(({ age, ...restOfMessage }) => restOfMessage)
 
+      // status -- time, date, working folder
+      const statusPrompt: Message = {
+        content: `Current date: ${new Date().toLocaleString()}\nCurrent folder: ${workingFolder}`,
+        role: 'system',
+      }
+
       // send to ChatGPT
       const response = await chatGPTPrompt({
         functions: aiFunctions,
-        messages: [initialPrompt, ...strippedMessages],
+        messages: [initialPrompt, statusPrompt, ...strippedMessages],
       })
 
       // log the response for debugging
