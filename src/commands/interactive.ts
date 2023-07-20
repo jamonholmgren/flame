@@ -3,12 +3,13 @@ import { chatGPTPrompt } from '../ai/openai'
 import { ChatCompletionRequestMessage } from 'openai'
 import { ageMessages } from '../utils/ageMessages'
 import { aiFunctions } from '../ai/functions'
+import { loadChatHistory, saveChatHistory } from '../utils/chatHistory'
 
 type Message = ChatCompletionRequestMessage & {
   age?: number
 }
 
-const prevMessages: Message[] = []
+let prevMessages: Message[] = []
 
 const initialPrompt: Message = {
   content: `
@@ -34,6 +35,9 @@ const command: GluegunCommand = {
     // first parameter is the folder we want to work in
     const workingFolder: string = filesystem.path(parameters.first)
 
+    // load/save history?
+    const saveHistory = parameters.options.history !== false
+
     // Helper function to handle function calls
     async function handleFunctionCall(response, functions: typeof aiFunctions) {
       const functionName = response.function_call.name
@@ -50,19 +54,7 @@ const command: GluegunCommand = {
     }
 
     // if they don't submit --no-history, then we will load the chat history
-    const chatHistoryFile = `${workingFolder}/.config/flame/flame-history.json`
-    if (parameters.options.history !== false) {
-      // make sure the folder exists
-      await filesystem.dirAsync(`${workingFolder}/.config/flame`)
-      // read the chat history
-      const chatHistory = await filesystem.readAsync(chatHistoryFile, 'utf8')
-      // if there is chat history, parse it
-      if (chatHistory) {
-        const parsedChatHistory = JSON.parse(chatHistory)
-        // add the chat history to the previous messages
-        prevMessages.push(...parsedChatHistory)
-      }
-    }
+    if (saveHistory) prevMessages = await loadChatHistory(workingFolder)
 
     // resubmit counter to ensure that we don't get stuck in a loop
     let resubmitCounter: undefined | number = undefined
@@ -92,7 +84,10 @@ const command: GluegunCommand = {
         if (result.chatMessage === '') continue
 
         // if the prompt is "exit", exit the loop
-        if (result.chatMessage === 'exit') break
+        if (result.chatMessage === 'exit') {
+          await saveChatHistory(workingFolder, prevMessages)
+          break
+        }
 
         // if the prompt is "debug", print the previous messages
         if (result.chatMessage === 'debug') {
@@ -220,9 +215,7 @@ const command: GluegunCommand = {
       ageMessages(prevMessages)
 
       // persist the chat history
-      if (parameters.options.history !== false) {
-        await filesystem.writeAsync(chatHistoryFile, JSON.stringify(prevMessages))
-      }
+      if (saveHistory) await saveChatHistory(workingFolder, prevMessages)
 
       // run again
     }
