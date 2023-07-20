@@ -1,17 +1,23 @@
 import { GluegunCommand } from 'gluegun'
 import { chatGPTPrompt } from '../ai/openai'
-import { ageMessages } from '../utils/ageMessages'
+import { smartContext } from '../ai/smart-context/smartContext'
 import { aiFunctions } from '../ai/functions'
-import { loadChatHistory, saveChatHistory } from '../utils/chatHistory'
+import { loadChatHistory, saveChatHistory } from '../ai/smart-context/smartContextHistory'
 import { loadFile } from '../utils/loadFile'
-import type { Message } from '../types'
+import type { Message, SmartContext } from '../types'
 import { handleSpecialCommand } from '../utils/handleSpecialCommand'
 import { initialPrompt, statusPrompt } from '../utils/interactiveInitialPrompt'
 import { handleFunctionCall } from '../utils/handleFunctionCall'
 import { listFiles } from '../utils/listFiles'
 
-let prevMessages: Message[] = []
+// context holds the current state of the chat
+const context: SmartContext = {
+  tasks: [],
+  files: [],
+  messages: [],
+}
 
+// debugLog holds everything we've done so far
 const debugLog: any[] = [initialPrompt]
 
 const command: GluegunCommand = {
@@ -30,7 +36,12 @@ const command: GluegunCommand = {
     if (saveHistory) {
       const spinner = print.spin('Loading chat history...')
       try {
-        prevMessages = await loadChatHistory(workingFolder)
+        const newContext = await loadChatHistory(workingFolder)
+
+        context.tasks = newContext.tasks
+        context.files = newContext.files
+        context.messages = newContext.messages
+
         spinner.succeed('Chat history loaded.')
       } catch (error) {
         spinner.fail('Failed to load chat history.')
@@ -47,23 +58,19 @@ const command: GluegunCommand = {
       const newMessage: Message = {
         content: result.chatMessage,
         role: 'user',
-        age: 100,
-        importance: result.chatMessage.toLowerCase().startsWith('important:')
-          ? 'important'
-          : 'normal',
       }
 
       // if the prompt is "exit", exit the loop
       if (result.chatMessage === 'exit') break
 
       // handle other special commands
-      if (handleSpecialCommand(result.chatMessage, prevMessages, debugLog)) continue
+      if (handleSpecialCommand(result.chatMessage, context.messages, debugLog)) continue
 
       // if the prompt starts with "load ", load a file into the prompt
       if (result.chatMessage.startsWith('load ')) {
         const fileName = result.chatMessage.slice(5)
         const { message, fileContents } = await loadFile(fileName, workingFolder)
-        prevMessages.push(message)
+        context.messages.push(message)
 
         // print that we loaded it
         print.info(`Loaded ${fileName} (${fileContents.length} characters)`)
@@ -76,7 +83,7 @@ const command: GluegunCommand = {
         const spinner = print.spin(`Listing ${path}...`)
         const { message } = await listFiles(path)
         spinner.succeed(`Listed ${path}.`)
-        prevMessages.push(message)
+        context.messages.push(message)
 
         // print that we loaded it
         print.info(`Listed ${path}`)
@@ -84,24 +91,20 @@ const command: GluegunCommand = {
       }
 
       // add the new message to the list of previous messages & debug
-      prevMessages.push(newMessage)
+      context.messages.push(newMessage)
       debugLog.push(newMessage)
 
       // now let's kick off the AI loop
       for (let i = 0; i < 5; i++) {
         // age messages to avoid going over max prompt size
-        ageMessages(prevMessages, 12000)
-
-        // remove the age property for sending to ChatGPT
-        let strippedMessages = prevMessages.map(
-          ({ age, importance, ...restOfMessage }) => restOfMessage
-        )
+        // ageMessages(prevMessages, 12000)
+        const smartMessages = smartContext(context)
 
         // send to ChatGPT
         const spinner = print.spin('AI is thinking...')
         const response = await chatGPTPrompt({
           functions: aiFunctions,
-          messages: [initialPrompt, statusPrompt(workingFolder), ...strippedMessages],
+          messages: [initialPrompt, statusPrompt(workingFolder), ...smartMessages],
         })
         spinner.stop() // no need to show the spinner anymore
 
@@ -112,10 +115,11 @@ const command: GluegunCommand = {
         if (response.content) {
           print.info(``)
           print.info(`${response.content}`)
+          print.info(``)
         }
 
         // add the response to the chat log
-        prevMessages.push({ ...response, age: 10 })
+        context.messages.push(response)
 
         // handle function calls
         if (!response.function_call) break // no function call, so we're done with this loop
@@ -129,23 +133,20 @@ const command: GluegunCommand = {
         // if we have an error, print it and stop
         if (functionCallResponse.error) {
           print.error(functionCallResponse.error)
-          prevMessages.push({
+          context.messages.push({
             content: 'Error: ' + functionCallResponse.error,
             role: 'function',
             name: response.function_call.name,
-            age: 5,
           })
           break
         }
 
         // add the response to the chat log
         if (functionCallResponse.content) {
-          prevMessages.push({
+          context.messages.push({
             content: functionCallResponse.content,
             role: 'function',
             name: response.function_call.name,
-            age: 5,
-            importance: 'normal',
           })
         }
 
@@ -154,7 +155,7 @@ const command: GluegunCommand = {
       }
 
       // persist the chat history
-      if (saveHistory) await saveChatHistory(workingFolder, prevMessages)
+      if (saveHistory) await saveChatHistory(workingFolder, context)
     }
   },
 }

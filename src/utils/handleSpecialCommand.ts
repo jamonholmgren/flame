@@ -17,6 +17,13 @@ export function handleSpecialCommand(command: string, prevMessages: any[], debug
     return true
   }
 
+  // if the prompt is "log N", print the chat log last N messages
+  if (command.startsWith('log ')) {
+    const targetLength = parseInt(command.split(' ')[1], 10) || 10
+    print.info(prevMessages.slice(-targetLength))
+    return true
+  }
+
   // if the prompt is "clear", clear the chat log
   if (command === 'clear') {
     prevMessages.length = 0
@@ -28,14 +35,6 @@ export function handleSpecialCommand(command: string, prevMessages: any[], debug
   if (command === 'clearlast') {
     prevMessages.pop()
     print.info('Last message cleared.')
-    return true
-  }
-
-  // if the prompt starts with "logcompress", logcompress the chat log
-  if (command === 'logcompress' || command.startsWith('logcompress ')) {
-    const targetLength = parseInt(command.split(' ')[1], 10) || 8000
-    ageMessages(prevMessages, targetLength)
-    print.info(`Chat log compressed to ${targetLength} characters.`)
     return true
   }
 
