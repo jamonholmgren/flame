@@ -5,21 +5,10 @@ import { aiFunctions } from '../ai/functions'
 import { loadChatHistory, saveChatHistory } from '../utils/chatHistory'
 import { loadFile } from '../utils/loadFile'
 import type { Message } from '../types'
+import { handleSpecialCommand } from '../utils/handleSpecialCommand'
+import { initialPrompt, statusPrompt } from '../utils/interactiveInitialPrompt'
 
 let prevMessages: Message[] = []
-
-const initialPrompt: Message = {
-  content: `
-You are a bot that helps a developer build and modify software.
-You understand instructions and can make the changes yourself.
-The developer can also ask you questions about anything and you respond.
-Before making changes to a file, if the file has not yet been read
-into the chat backlog, then you can read the file first and we will
-report back with the contents of that file so you can figure out
-where to make changes.
-  `,
-  role: 'system',
-}
 
 const debugLog: any[] = [initialPrompt]
 
@@ -57,12 +46,7 @@ const command: GluegunCommand = {
     while (true) {
       // show an interactive prompt if not resubmitting
       print.info('')
-      const result = await prompt.ask({
-        type: 'input',
-        name: 'chatMessage',
-        message: '→ ',
-      })
-
+      const result = await prompt.ask({ type: 'input', name: 'chatMessage', message: '→ ' })
       print.info('')
 
       let newMessage: Message = {
@@ -71,40 +55,11 @@ const command: GluegunCommand = {
         age: 100,
       }
 
-      // if the prompt is empty, skip it and try again
-      if (result.chatMessage.trim() === '') continue
-
       // if the prompt is "exit", exit the loop
-      if (result.chatMessage === 'exit') {
-        await saveChatHistory(workingFolder, prevMessages)
-        break
-      }
+      if (result.chatMessage === 'exit') break
 
-      // if the prompt is "debug", print the previous messages
-      if (result.chatMessage === 'debug') {
-        print.info(debugLog)
-        continue
-      }
-
-      // if the prompt is "log", print the chat log
-      if (result.chatMessage === 'log') {
-        print.info(prevMessages)
-        continue
-      }
-
-      // if the prompt is "clear", clear the chat log
-      if (result.chatMessage === 'clear') {
-        prevMessages.length = 0
-        print.info('Chat log cleared.')
-        continue
-      }
-
-      // if the prompt is "clearlast", clear the last message
-      if (result.chatMessage === 'clearlast') {
-        prevMessages.pop()
-        print.info('Last message cleared.')
-        continue
-      }
+      // handle other special commands
+      if (handleSpecialCommand(result.chatMessage, prevMessages, debugLog)) continue
 
       // if the prompt starts with "load ", load a file into the prompt
       if (result.chatMessage.startsWith('load ')) {
@@ -128,16 +83,10 @@ const command: GluegunCommand = {
         // remove the age property for sending to ChatGPT
         let strippedMessages = prevMessages.map(({ age, ...restOfMessage }) => restOfMessage)
 
-        // status -- time, date, working folder
-        const statusPrompt: Message = {
-          content: `Current date: ${new Date().toLocaleString()}\nCurrent folder: ${workingFolder}`,
-          role: 'system',
-        }
-
         // send to ChatGPT
         const response = await chatGPTPrompt({
           functions: aiFunctions,
-          messages: [initialPrompt, statusPrompt, ...strippedMessages],
+          messages: [initialPrompt, statusPrompt(workingFolder), ...strippedMessages],
         })
 
         // log the response for debugging
@@ -175,8 +124,6 @@ const command: GluegunCommand = {
 
       // persist the chat history
       if (saveHistory) await saveChatHistory(workingFolder, prevMessages)
-
-      // run again
     }
   },
 }
