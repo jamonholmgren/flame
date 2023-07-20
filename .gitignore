@@ -6,3 +6,4 @@ coverage
 dist
 build
 .vscode
+.config/flame/flame-history.json

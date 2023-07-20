@@ -18,7 +18,7 @@ export function ageMessages(messages: any[], maxLength = 8000) {
 
         // If age is <= 0, edit the content to truncate
         if (msg.age <= 0) {
-          msg.content = msg.content.slice(20) + '...<rest omitted for brevity>'
+          msg.content = msg.content.slice(0, 20) + '...<rest omitted for brevity>'
         }
       }
 
