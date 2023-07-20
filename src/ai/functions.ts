@@ -11,28 +11,28 @@ type ChatCompletionFunction = ChatCompletionFunctions & {
 
 export const aiFunctions: ChatCompletionFunction[] = [
   {
-    name: 'patch',
-    description: `Allows replacing or deleting the first matching string in a given file.`,
+    name: 'patchLines',
+    description: `Allows replacing or deleting a matching line in a given file (but can do multiple lines via multiple instructions). Only replaces one line or part of one line per instruction.`,
     parameters: {
       type: 'object',
       properties: {
         file: {
           type: 'string',
-          description: 'The file to patch',
+          description: 'The file to patch lines of code in',
         },
         instructions: {
           type: 'array',
           items: {
             type: 'object',
             properties: {
-              replace: {
+              findLine: {
                 type: 'string',
                 description:
-                  'Replace this string with the insert string (be specific and include whitespace or more lines if necessary to disambiguate which one needs to be replaced)',
+                  'Look for this string in a line and replace that line with the insert string',
               },
-              insert: {
+              replaceLine: {
                 type: 'string',
-                description: 'Insert this string to replace the replace string',
+                description: 'Insert this line to replace the replace line',
               },
             },
           },
@@ -62,11 +62,11 @@ export const aiFunctions: ChatCompletionFunction[] = [
       }
 
       for (let instruction of instructions) {
-        const { insert, replace } = instruction
+        const { findLine, replaceLine } = instruction
 
         // Replace the string
-        if (fileContents.includes(replace)) {
-          fileContents = fileContents.replace(replace, insert)
+        if (fileContents.includes(findLine)) {
+          fileContents = fileContents.replace(findLine, replaceLine)
           // increment the number of patches
           response.patches++
         }
@@ -75,7 +75,7 @@ export const aiFunctions: ChatCompletionFunction[] = [
       // Write the file
       await filesystem.writeAsync(file, fileContents)
 
-      print.info(`Updated ${file} with ${response.patches}.`)
+      print.info(`Updated ${file} with ${response.patches} patches.`)
 
       // return the response
       return {
@@ -171,3 +171,5 @@ export const aiFunctions: ChatCompletionFunction[] = [
     },
   },
 ]
+
+export type AIFunctions = typeof aiFunctions

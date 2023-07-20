@@ -22,14 +22,14 @@ export function ageMessages(allMessages: Message[], maxLength = 12000) {
     let somethingAged = false
     messages = messages
       .map((msg) => {
-        if (msg.age !== undefined && msg.age > 0) {
+        if (msg.age !== undefined) {
           somethingAged = true
           msg.age--
 
           // important messages don't get aged out or truncated
           if (msg.importance === 'important') return msg
 
-          if (msg.importance === 'optional' && msg.age <= 0) {
+          if ((msg.importance === 'optional' && msg.age <= 0) || (msg.importance === 'normal' || !msg.importance) && msg.age <= 20) {
             // empty out the message, going to be deleted totally
             msg.content = ''
             msg.function_call = undefined

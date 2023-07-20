@@ -7,6 +7,8 @@ import { loadFile } from '../utils/loadFile'
 import type { Message } from '../types'
 import { handleSpecialCommand } from '../utils/handleSpecialCommand'
 import { initialPrompt, statusPrompt } from '../utils/interactiveInitialPrompt'
+import { handleFunctionCall } from '../utils/handleFunctionCall'
+import { listFiles } from '../utils/listFiles'
 
 let prevMessages: Message[] = []
 
@@ -24,21 +26,6 @@ const command: GluegunCommand = {
     // load/save history?
     const saveHistory = parameters.options.history !== false
 
-    // Helper function to handle function calls
-    async function handleFunctionCall(response, functions: typeof aiFunctions) {
-      const functionName = response.function_call.name
-      const functionArgs = JSON.parse(response.function_call.arguments)
-
-      // Look up function in the registry and call it with the parsed arguments
-      const func = functions.find((f) => f.name === functionName)
-
-      if (func) {
-        return func.fn({ workingFolder, ...functionArgs })
-      } else {
-        return { error: `Function '${functionName}' is not registered.` }
-      }
-    }
-
     // if they don't submit --no-history, then we will load the chat history
     if (saveHistory) prevMessages = await loadChatHistory(workingFolder)
 
@@ -49,7 +36,7 @@ const command: GluegunCommand = {
       const result = await prompt.ask({ type: 'input', name: 'chatMessage', message: '→ ' })
       print.info('')
 
-      let newMessage: Message = {
+      const newMessage: Message = {
         content: result.chatMessage,
         role: 'user',
         age: 100,
@@ -68,10 +55,22 @@ const command: GluegunCommand = {
       if (result.chatMessage.startsWith('load ')) {
         const fileName = result.chatMessage.slice(5)
         const { message, fileContents } = await loadFile(fileName, workingFolder)
-        newMessage = message
+        prevMessages.push(message)
 
         // print that we loaded it
         print.info(`Loaded ${fileName} (${fileContents.length} characters)`)
+        continue
+      }
+
+      // if the prompt starts with "ls ", list files in the prompt
+      if (result.chatMessage.startsWith('ls ')) {
+        const path = filesystem.path(result.chatMessage.slice(3))
+        const { message } = await listFiles(path)
+        prevMessages.push(message)
+
+        // print that we loaded it
+        print.info(`Listed ${path}`)
+        continue
       }
 
       // add the new message to the list of previous messages & debug
@@ -84,7 +83,9 @@ const command: GluegunCommand = {
         ageMessages(prevMessages, 12000)
 
         // remove the age property for sending to ChatGPT
-        let strippedMessages = prevMessages.map(({ age, ...restOfMessage }) => restOfMessage)
+        let strippedMessages = prevMessages.map(
+          ({ age, importance, ...restOfMessage }) => restOfMessage
+        )
 
         // send to ChatGPT
         const response = await chatGPTPrompt({
@@ -108,7 +109,7 @@ const command: GluegunCommand = {
         if (!response.function_call) break // no function call, so we're done with this loop
 
         // if we have a function call, handle it
-        const functionCallResponse = await handleFunctionCall(response, aiFunctions)
+        const functionCallResponse = await handleFunctionCall(response, aiFunctions, workingFolder)
         debugLog.push(functionCallResponse)
 
         // if we have an error, print it and stop
