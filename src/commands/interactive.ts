@@ -90,6 +90,11 @@ const command: GluegunCommand = {
 
             const fileContents = await filesystem.readAsync(file, 'utf8')
 
+            // if the file doesn't exist, return an error
+            if (fileContents === undefined) {
+              return { error: `File '${file}' does not exist.` }
+            }
+
             // Replace the string
             const patchedFileContents = fileContents.replace(replace, insert)
 
