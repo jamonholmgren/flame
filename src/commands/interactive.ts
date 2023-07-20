@@ -73,7 +73,9 @@ const command: GluegunCommand = {
       // if the prompt starts with "ls ", list files in the prompt
       if (result.chatMessage.startsWith('ls ')) {
         const path = filesystem.path(result.chatMessage.slice(3))
+        const spinner = print.spin(`Listing ${path}...`)
         const { message } = await listFiles(path)
+        spinner.succeed(`Listed ${path}.`)
         prevMessages.push(message)
 
         // print that we loaded it
@@ -96,10 +98,12 @@ const command: GluegunCommand = {
         )
 
         // send to ChatGPT
+        const spinner = print.spin('AI is thinking...')
         const response = await chatGPTPrompt({
           functions: aiFunctions,
           messages: [initialPrompt, statusPrompt(workingFolder), ...strippedMessages],
         })
+        spinner.stop() // no need to show the spinner anymore
 
         // log the response for debugging
         debugLog.push(response)
@@ -117,7 +121,9 @@ const command: GluegunCommand = {
         if (!response.function_call) break // no function call, so we're done with this loop
 
         // if we have a function call, handle it
+        const fnSpinner = print.spin(`Running ${response.function_call.name}...`)
         const functionCallResponse = await handleFunctionCall(response, aiFunctions, workingFolder)
+        fnSpinner.succeed(`${response.function_call.name} complete.`)
         debugLog.push(functionCallResponse)
 
         // if we have an error, print it and stop
