@@ -4,6 +4,7 @@ import { ChatCompletionRequestMessage } from 'openai'
 import { ageMessages } from '../utils/ageMessages'
 import { aiFunctions } from '../ai/functions'
 import { loadChatHistory, saveChatHistory } from '../utils/chatHistory'
+import { loadFile } from '../utils/loadFile'
 
 type Message = ChatCompletionRequestMessage & {
   age?: number
@@ -56,163 +57,121 @@ const command: GluegunCommand = {
     // if they don't submit --no-history, then we will load the chat history
     if (saveHistory) prevMessages = await loadChatHistory(workingFolder)
 
-    // resubmit counter to ensure that we don't get stuck in a loop
-    let resubmitCounter: undefined | number = undefined
-
     // interactive loop
     while (true) {
-      if (resubmitCounter) {
-        // no need to add another message, just submit what we have again
-      } else {
-        // show an interactive prompt if not resubmitting
-        print.info('')
-        const result = await prompt.ask({
-          type: 'input',
-          name: 'chatMessage',
-          message: '→ ',
-        })
-
-        print.info('')
-
-        const newMessage: Message = {
-          content: result.chatMessage,
-          role: 'user',
-          age: 100,
-        }
-
-        // if the prompt is empty, skip it
-        if (result.chatMessage === '') continue
-
-        // if the prompt is "exit", exit the loop
-        if (result.chatMessage === 'exit') {
-          await saveChatHistory(workingFolder, prevMessages)
-          break
-        }
-
-        // if the prompt is "debug", print the previous messages
-        if (result.chatMessage === 'debug') {
-          print.info(debugLog)
-          continue
-        }
-
-        // if the prompt is "log", print the chat log
-        if (result.chatMessage === 'log') {
-          print.info(prevMessages)
-          continue
-        }
-
-        // if the prompt is "clear", clear the chat log
-        if (result.chatMessage === 'clear') {
-          prevMessages.length = 0
-          print.info('Chat log cleared.')
-          continue
-        }
-
-        // if the prompt is "clearlast", clear the last message
-        if (result.chatMessage === 'clearlast') {
-          prevMessages.pop()
-          print.info('Last message cleared.')
-          continue
-        }
-
-        // if the prompt starts with "load ", load a file into the prompt
-        if (result.chatMessage.startsWith('load ')) {
-          // TODO: have the AI figure out what file to load, and use a function call to do it
-
-          // get the file name
-          const fileName = result.chatMessage.slice(5)
-
-          // read the file
-          const fileContents = await filesystem.readAsync(`${workingFolder}/${fileName}`, 'utf8')
-
-          // add the file contents to the prompt
-          const newMessage: Message = {
-            content: `
-  Here's the contents of ${fileName}:
-
-  \`\`\`
-  ${fileContents}
-  \`\`\`
-          `,
-            role: 'user',
-            age: 5,
-          }
-
-          // add the new message to the list of previous messages
-          prevMessages.push(newMessage)
-
-          // print that we loaded it
-          print.info(`Loaded ${fileName} (${fileContents.length} characters)`)
-
-          // run again
-          continue
-        }
-
-        // add the new message to the list of previous messages
-        prevMessages.push(newMessage)
-
-        // add the message for debugging
-        debugLog.push(newMessage)
-      }
-
-      // log the last message
-      // print.info(prevMessages[prevMessages.length - 1].content)
-
-      // remove the age property for sending to ChatGPT
-      let strippedMessages = prevMessages.map(({ age, ...restOfMessage }) => restOfMessage)
-
-      // status -- time, date, working folder
-      const statusPrompt: Message = {
-        content: `Current date: ${new Date().toLocaleString()}\nCurrent folder: ${workingFolder}`,
-        role: 'system',
-      }
-
-      // send to ChatGPT
-      const response = await chatGPTPrompt({
-        functions: aiFunctions,
-        messages: [initialPrompt, statusPrompt, ...strippedMessages],
+      // show an interactive prompt if not resubmitting
+      print.info('')
+      const result = await prompt.ask({
+        type: 'input',
+        name: 'chatMessage',
+        message: '→ ',
       })
 
-      // log the response for debugging
-      debugLog.push(response)
+      print.info('')
 
-      // print and log the response content
-      if (response.content) {
-        print.info(``)
-        print.info(`${response.content}`)
-        prevMessages.push({ content: response.content, role: 'assistant', age: 10 })
+      let newMessage: Message = {
+        content: result.chatMessage,
+        role: 'user',
+        age: 100,
       }
 
-      // handle function calls
-      if (response.function_call) {
+      // if the prompt is empty, skip it and try again
+      if (result.chatMessage.trim() === '') continue
+
+      // if the prompt is "exit", exit the loop
+      if (result.chatMessage === 'exit') {
+        await saveChatHistory(workingFolder, prevMessages)
+        break
+      }
+
+      // if the prompt is "debug", print the previous messages
+      if (result.chatMessage === 'debug') {
+        print.info(debugLog)
+        continue
+      }
+
+      // if the prompt is "log", print the chat log
+      if (result.chatMessage === 'log') {
+        print.info(prevMessages)
+        continue
+      }
+
+      // if the prompt is "clear", clear the chat log
+      if (result.chatMessage === 'clear') {
+        prevMessages.length = 0
+        print.info('Chat log cleared.')
+        continue
+      }
+
+      // if the prompt is "clearlast", clear the last message
+      if (result.chatMessage === 'clearlast') {
+        prevMessages.pop()
+        print.info('Last message cleared.')
+        continue
+      }
+
+      // if the prompt starts with "load ", load a file into the prompt
+      if (result.chatMessage.startsWith('load ')) {
+        const fileName = result.chatMessage.slice(5)
+        const { message, fileContents } = await loadFile(fileName, workingFolder)
+        newMessage = message
+
+        // print that we loaded it
+        print.info(`Loaded ${fileName} (${fileContents.length} characters)`)
+      }
+
+      // add the new message to the list of previous messages & debug
+      prevMessages.push(newMessage)
+      debugLog.push(newMessage)
+
+      // now let's kick off the AI loop
+      for (let i = 0; i < 5; i++) {
+        // remove the age property for sending to ChatGPT
+        let strippedMessages = prevMessages.map(({ age, ...restOfMessage }) => restOfMessage)
+
+        // status -- time, date, working folder
+        const statusPrompt: Message = {
+          content: `Current date: ${new Date().toLocaleString()}\nCurrent folder: ${workingFolder}`,
+          role: 'system',
+        }
+
+        // send to ChatGPT
+        const response = await chatGPTPrompt({
+          functions: aiFunctions,
+          messages: [initialPrompt, statusPrompt, ...strippedMessages],
+        })
+
+        // log the response for debugging
+        debugLog.push(response)
+
+        // print and log the response content if there is any
+        if (response.content) {
+          print.info(``)
+          print.info(`${response.content}`)
+          prevMessages.push({ content: response.content, role: 'assistant', age: 10 })
+        }
+
+        // handle function calls
+        if (!response.function_call) break // no function call, so we're done
+
+        // if we have a function call, handle it
         const functionCallResponse = await handleFunctionCall(response, aiFunctions)
+        debugLog.push(functionCallResponse)
+
         if (functionCallResponse.content) {
-          // print.info(functionCallResponse.content)
           prevMessages.push({ content: functionCallResponse.content, role: 'user', age: 5 })
         } else if (functionCallResponse.error) {
           print.error(functionCallResponse.error)
           prevMessages.push({ content: functionCallResponse.error, role: 'user', age: 5 })
+          break
         }
-        debugLog.push(functionCallResponse)
 
-        if (functionCallResponse.resubmit) {
-          // increment the resubmit counter
-          resubmitCounter = resubmitCounter ? resubmitCounter + 1 : 1
+        // if we don't have a resubmit, we're done
+        if (!functionCallResponse.resubmit) break
 
-          // if we've resubmitted too many times, stop that
-          if (resubmitCounter > 5) {
-            print.error('Too many resubmits.')
-            resubmitCounter = undefined
-          }
-        } else {
-          resubmitCounter = undefined
-        }
-      } else {
-        resubmitCounter = undefined
+        // age messages to avoid going over prompt size
+        ageMessages(prevMessages)
       }
-
-      // age messages to avoid going over prompt size
-      ageMessages(prevMessages)
 
       // persist the chat history
       if (saveHistory) await saveChatHistory(workingFolder, prevMessages)
