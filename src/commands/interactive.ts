@@ -126,6 +126,9 @@ const command: GluegunCommand = {
 
       // now let's kick off the AI loop
       for (let i = 0; i < 5; i++) {
+        // age messages to avoid going over max prompt size
+        ageMessages(prevMessages, 12000)
+
         // remove the age property for sending to ChatGPT
         let strippedMessages = prevMessages.map(({ age, ...restOfMessage }) => restOfMessage)
 
@@ -152,25 +155,26 @@ const command: GluegunCommand = {
         }
 
         // handle function calls
-        if (!response.function_call) break // no function call, so we're done
+        if (!response.function_call) break // no function call, so we're done with this loop
 
         // if we have a function call, handle it
         const functionCallResponse = await handleFunctionCall(response, aiFunctions)
         debugLog.push(functionCallResponse)
 
-        if (functionCallResponse.content) {
-          prevMessages.push({ content: functionCallResponse.content, role: 'user', age: 5 })
-        } else if (functionCallResponse.error) {
+        // if we have an error, print it and stop
+        if (functionCallResponse.error) {
           print.error(functionCallResponse.error)
           prevMessages.push({ content: functionCallResponse.error, role: 'user', age: 5 })
           break
         }
 
-        // if we don't have a resubmit, we're done
-        if (!functionCallResponse.resubmit) break
+        // add the response to the chat log
+        if (functionCallResponse.content) {
+          prevMessages.push({ content: functionCallResponse.content, role: 'user', age: 5 })
+        }
 
-        // age messages to avoid going over prompt size
-        ageMessages(prevMessages)
+        // if we don't have a resubmit, we're done with this loop
+        if (!functionCallResponse.resubmit) break
       }
 
       // persist the chat history
