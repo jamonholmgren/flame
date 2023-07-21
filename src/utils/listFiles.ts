@@ -14,8 +14,6 @@ ${(files || []).join('\n')}
 \`\`\`
 `,
     role: 'user',
-    age: 5,
-    importance: 'normal',
   }
 
   return { message }

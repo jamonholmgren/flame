@@ -8,14 +8,13 @@ export async function loadFile(fileName: string, workingFolder: string) {
   // add the file contents to the prompt
   const message: Message = {
     content: `
-  Here's the contents of ${fileName}:
+Here's the contents of ${fileName}:
 
-  \`\`\`
-  ${fileContents}
-  \`\`\`
-          `,
+\`\`\`
+${fileContents}
+\`\`\`
+`,
     role: 'user',
-    age: 5,
   }
 
   return { message, fileContents }

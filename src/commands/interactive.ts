@@ -2,7 +2,7 @@ import { GluegunCommand } from 'gluegun'
 import { chatGPTPrompt } from '../ai/openai'
 import { smartContext } from '../ai/smart-context/smartContext'
 import { aiFunctions } from '../ai/functions'
-import { loadChatHistory, saveChatHistory } from '../ai/smart-context/smartContextHistory'
+import { loadSmartContext, saveSmartContext } from '../ai/smart-context/persistSmartContext'
 import { loadFile } from '../utils/loadFile'
 import type { Message, SmartContext } from '../types'
 import { handleSpecialCommand } from '../utils/handleSpecialCommand'
@@ -12,6 +12,7 @@ import { listFiles } from '../utils/listFiles'
 
 // context holds the current state of the chat
 const context: SmartContext = {
+  project: '',
   tasks: [],
   files: [],
   messages: [],
@@ -36,7 +37,7 @@ const command: GluegunCommand = {
     if (saveHistory) {
       const spinner = print.spin('Loading chat history...')
       try {
-        const newContext = await loadChatHistory(workingFolder)
+        const newContext = await loadSmartContext(workingFolder)
 
         context.tasks = newContext.tasks
         context.files = newContext.files
@@ -64,7 +65,7 @@ const command: GluegunCommand = {
       if (result.chatMessage === 'exit') break
 
       // handle other special commands
-      if (handleSpecialCommand(result.chatMessage, context.messages, debugLog)) continue
+      if (handleSpecialCommand(result.chatMessage, context, debugLog)) continue
 
       // if the prompt starts with "load ", load a file into the prompt
       if (result.chatMessage.startsWith('load ')) {
@@ -155,7 +156,7 @@ const command: GluegunCommand = {
       }
 
       // persist the chat history
-      if (saveHistory) await saveChatHistory(workingFolder, context)
+      if (saveHistory) await saveSmartContext(workingFolder, context)
     }
   },
 }

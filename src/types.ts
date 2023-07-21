@@ -13,15 +13,23 @@ export type Message = ChatCompletionRequestMessage
  * It gets updated in the flame-history.json file that is created in src/utils/chatHistory.ts.
  */
 export type SmartContext = {
+  // Project context, continually updated
+  project: string // "flame is a gluegun cli that uses AI to modify code"
+
+  // Specific tasks we are working on
   tasks: {
-    name: string
-    contents: string
-    embeddings?: number[]
+    name: string // "interactive smartcontext"
+    contents: string // "create a smartcontext that can be used in the interactive command"
+    embeddings?: number[] // embedding to determine relevance to current messages
   }[]
+
+  // Files we have loaded
   files: {
     path: string
     contents: string
     embeddings?: number[]
   }[]
+
+  // Previous messages we have sent
   messages: Message[]
 }

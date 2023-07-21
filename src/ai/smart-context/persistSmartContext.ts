@@ -3,25 +3,29 @@
 import { filesystem } from 'gluegun'
 import type { SmartContext } from '../../types'
 
+const flamePath = '.config/flame'
+const flameFile = `flame-data.json`
+
 // Load chat history from a file
-export async function loadChatHistory(workingFolder: string): Promise<SmartContext> {
-  const chatHistoryFile = `${workingFolder}/.config/flame/flame-history.json`
+export async function loadSmartContext(workingFolder: string): Promise<SmartContext> {
+  const path = `${workingFolder}/${flamePath}`
 
   // make sure the folder exists
-  await filesystem.dirAsync(`${workingFolder}/.config/flame`)
+  await filesystem.dirAsync(path)
 
   const context: SmartContext = {
+    project: '',
     tasks: [],
     files: [],
     messages: [],
   }
 
   // read the chat context
-  const chatHistory = await filesystem.readAsync(chatHistoryFile, 'utf8')
+  const flameData = await filesystem.readAsync(`${path}/${flameFile}`, 'utf8')
 
   // if there is chat history, parse it
-  if (chatHistory) {
-    const parsedChatHistory = JSON.parse(chatHistory)
+  if (flameData) {
+    const parsedChatHistory = JSON.parse(flameData)
 
     if (Array.isArray(parsedChatHistory)) {
       // if the chat history is an array, upgrade it to an object
@@ -38,12 +42,12 @@ export async function loadChatHistory(workingFolder: string): Promise<SmartConte
 }
 
 // Save chat history to a file
-export async function saveChatHistory(workingFolder: string, context: SmartContext): Promise<void> {
-  const chatHistoryFile = `${workingFolder}/.config/flame/flame-history.json`
+export async function saveSmartContext(workingFolder: string, context: SmartContext) {
+  const path = `${workingFolder}/${flamePath}`
 
   // make sure the folder exists
-  await filesystem.dirAsync(`${workingFolder}/.config/flame`)
+  await filesystem.dirAsync(path)
 
-  // write the chat history
-  await filesystem.writeAsync(chatHistoryFile, JSON.stringify(context))
+  // write the context
+  await filesystem.writeAsync(`${path}/${flameFile}`, JSON.stringify(context))
 }
