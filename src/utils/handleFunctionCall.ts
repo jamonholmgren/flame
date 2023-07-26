@@ -1,6 +1,7 @@
 import { ChatCompletionResponseMessage } from 'openai'
 import { AIFunctions } from '../ai/functions'
 import { SmartContext } from '../types'
+import { print } from 'gluegun'
 
 // Helper function to handle function calls
 export async function handleFunctionCall(
@@ -21,7 +22,21 @@ export async function handleFunctionCall(
   const func = functions.find((f) => f.name === functionName)
 
   if (func) {
-    return func.fn(functionArgs, context)
+    const result = await func.fn(functionArgs, context)
+
+    if (result.error) {
+      print.error(`Error: ${result.error}`)
+    } else if (result.patches) {
+      print.success(`Updated ${functionArgs.file} with these changes:`)
+      result.patches.forEach((patch) => {
+        print.error(`- ${patch.findLine}`)
+        print.success(`+ ${patch.replaceLine}`)
+      })
+    } else {
+      print.info(`${functionName} complete.`)
+    }
+
+    return result
   } else {
     return { error: `Function '${functionName}' is not registered.` }
   }

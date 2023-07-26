@@ -11,6 +11,10 @@ type ChatCompletionFunction = ChatCompletionFunctions & {
   ) => Promise<{
     content?: string
     resubmit?: boolean
+    patches?: {
+      findLine: string
+      replaceLine: string
+    }[]
     error?: string
   }>
 }
@@ -95,7 +99,7 @@ export const aiFunctions: ChatCompletionFunction[] = [
       // construct a response
       let response = {
         file,
-        patches: 0,
+        patches: [],
       }
 
       let fileContents = await filesystem.readAsync(file, 'utf8')
@@ -112,19 +116,17 @@ export const aiFunctions: ChatCompletionFunction[] = [
         if (fileContents.includes(findLine)) {
           fileContents = fileContents.replace(findLine, replaceLine)
           // increment the number of patches
-          response.patches++
+          response.patches.push({ findLine, replaceLine })
         }
       }
 
       // Write the file
       await filesystem.writeAsync(file, fileContents)
 
-      // print.info(`Updated ${file} with ${response.patches} patches.`)
+      // print.info(`Updated ${file} with ${response.patches.length} patches.`)
 
       // return the response
-      return {
-        content: JSON.stringify(response),
-      }
+      return response
     },
   },
   {
