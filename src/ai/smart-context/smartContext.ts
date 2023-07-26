@@ -54,15 +54,6 @@ export function createSmartContextBackchat(context: SmartContext): Message[] {
       content: `We know about these files and folders so far:\n${paths.join('\n')}`,
       role: 'user',
     })
-
-    // then we'll add the most relevant file(s) to the current task, if any
-    // currently, just the last file loaded (dumb I know)
-    const file = context.files[paths[paths.length - 1]]
-
-    backchat.push({
-      content: `The most relevant file to the current task is ${file.path}:\n\n${file.contents}`,
-      role: 'user',
-    })
   }
 
   // then we'll add the previous messages that are relevant to the current task
@@ -83,6 +74,19 @@ export function createSmartContextBackchat(context: SmartContext): Message[] {
     messages.forEach((message) => {
       backchat.push(message)
     })
+  }
+
+  // then we'll add the current file
+  if (context.currentFile) {
+    const file = context.files[context.currentFile]
+
+    // if we have a current file, we'll add it
+    if (file) {
+      backchat.push({
+        content: `The file for the current task is ${file.path}:\n\n${file.contents}`,
+        role: 'user',
+      })
+    }
   }
 
   return backchat

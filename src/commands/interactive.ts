@@ -79,8 +79,8 @@ const command: GluegunCommand = {
         role: 'user',
       }
 
-      // if the prompt is "exit", exit the loop
-      if (result.chatMessage === 'exit') break
+      // if the prompt is "exit" or "/exit", exit the loop, we're done!
+      if (['exit', '/exit'].includes(result.chatMessage)) break
 
       // handle other special commands
       if (handleSpecialCommand(result.chatMessage, context, debugLog)) continue

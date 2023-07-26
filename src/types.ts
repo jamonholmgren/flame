@@ -35,6 +35,9 @@ export type SmartContext = {
     }
   }
 
+  // Current file we are working on
+  currentFile?: string
+
   // Previous messages we have sent
   messages: Message[]
 }

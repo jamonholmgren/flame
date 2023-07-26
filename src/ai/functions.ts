@@ -146,9 +146,9 @@ export const aiFunctions: ChatCompletionFunction[] = [
 
       print.info(`Read ${args.path} (${file.contents.length} characters).`)
 
-      // Return the contents
+      // Since we now have the file and it is set as the current file, we can resubmit
       return {
-        content: JSON.stringify({ path: args.path, contents: file.contents }),
+        content: undefined,
         resubmit: true,
       }
     },
@@ -196,6 +196,9 @@ export const aiFunctions: ChatCompletionFunction[] = [
     fn: async (args: { newSummary: string }, context) => {
       // Update the project summary
       context.project = args.newSummary
+
+      // prints the new summary
+      print.info(`Updated project summary:\n\n${context.project}\n`)
 
       // We're done, wait for further instructions
       return { content: undefined }

@@ -9,7 +9,7 @@ export async function generateProjectSummary(context: SmartContext) {
   if (readmeFile) {
     // Generate a summary using gpt-3.5-turbo
     const summary = await generateSummary(
-      `Use the following README.md contents to generate a summary of the project.`,
+      `Use the following README.md contents to generate a summary of the project as few words as possible.`,
       readmeFile.contents
     )
 

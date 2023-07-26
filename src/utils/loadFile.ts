@@ -17,6 +17,9 @@ export async function loadFile(fileName: string, context: SmartContext) {
   const file = { path: fileName, contents, embeddings }
   context.files[fileName] = file
 
+  // add it as the current file
+  context.currentFile = fileName
+
   // return the file
   return file
 }
