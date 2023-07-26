@@ -1,5 +1,5 @@
 import { GluegunCommand } from 'gluegun'
-import { chatGPTPrompt } from '../ai/openai'
+import { chatGPTPrompt, createEmbedding } from '../ai/openai'
 import { createSmartContextBackchat } from '../ai/smart-context/smartContext'
 import { aiFunctions } from '../ai/functions'
 import { loadSmartContext, saveSmartContext } from '../ai/smart-context/persistSmartContext'
@@ -19,6 +19,7 @@ const context: SmartContext = {
   currentFile: '',
   files: {},
   messages: [],
+  currentTaskEmbeddings: undefined,
 }
 
 // debugLog holds everything we've done so far
@@ -84,7 +85,7 @@ const command: GluegunCommand = {
       if (['exit', '/exit'].includes(result.chatMessage)) break
 
       // handle other special commands
-      if (handleSpecialCommand(result.chatMessage, context, debugLog)) continue
+      if (await handleSpecialCommand(result.chatMessage, context, debugLog)) continue
 
       // if the prompt starts with "load ", load a file into the prompt
       if (result.chatMessage.startsWith('/load ')) {
@@ -119,6 +120,12 @@ const command: GluegunCommand = {
       // add the new message to the list of previous messages & debug
       context.messages.push(newMessage)
       debugLog.push(newMessage)
+
+      // create a new embedding for the current task + last several messages so we can use it for finding relevant files
+      const embedding = await createEmbedding(
+        `${context.currentTask}\n\n${context.messages.slice(-5, -1).join('\n')}`
+      )
+      context.currentTaskEmbeddings = embedding[0].embedding
 
       // now let's kick off the AI loop
       for (let i = 0; i < 5; i++) {

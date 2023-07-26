@@ -1,4 +1,5 @@
 import { Message, SmartContext } from '../../types'
+import { cosineSimilarity } from '../../utils/cosignSimilarity'
 import { loadFile } from '../../utils/loadFile'
 
 export async function createSmartContextBackchat(context: SmartContext): Promise<Message[]> {
@@ -36,6 +37,47 @@ export async function createSmartContextBackchat(context: SmartContext): Promise
     })
   }
 
+  // let's add any relevant files, using the embeddings
+  if (Object.keys(context.files).length > 0 && context.currentTaskEmbeddings) {
+    const relevantFiles = Object.values(context.files)
+      .map((file) => {
+        // if it's the currentFile, skip it -- we'll add it later
+        if (file.path === context.currentFile) return { file, similarity: 0 }
+
+        // check its relevancy
+        if (file.embeddings) {
+          // if it has embeddings, we'll check the cosine similarity
+          const similarity = cosineSimilarity(context.currentTaskEmbeddings, file.embeddings)
+          return { file, similarity }
+        } else {
+          return { file, similarity: 0 }
+        }
+      })
+      .filter((a) => a.similarity > 0.7) // has to be > 70% or we don't show it
+      .sort((a, b) => b.similarity - a.similarity)
+      .map((a) => a.file)
+
+    if (relevantFiles.length > 0) {
+      // grab the first 3 most relevant files
+      relevantFiles.slice(0, 3).forEach((file) => {
+        backchat.push({
+          role: 'assistant',
+          content: null,
+          function_call: {
+            name: 'readFileAndReportBack',
+            arguments: JSON.stringify({ path: file.path }),
+          },
+        })
+
+        backchat.push({
+          role: 'function',
+          name: 'readFileAndReportBack',
+          content: file.shortened || file.contents,
+        })
+      })
+    }
+  }
+
   // then we'll add the current task
   if (context.currentTask) {
     backchat.push({
@@ -54,7 +96,7 @@ export async function createSmartContextBackchat(context: SmartContext): Promise
     })
   }
 
-  // then we'll add the current file
+  // then we'll add the current (last-loaded) file
   if (context.currentFile) {
     // refresh it from the filesystem to get the latest version
     const file = await loadFile(context.currentFile, context)

@@ -2,7 +2,11 @@ import { print } from 'gluegun'
 import { SmartContext } from '../types'
 import { createSmartContextBackchat } from '../ai/smart-context/smartContext'
 
-export function handleSpecialCommand(command: string, context: SmartContext, debugLog: any[]) {
+export async function handleSpecialCommand(
+  command: string,
+  context: SmartContext,
+  debugLog: any[]
+) {
   // if the prompt is empty, skip it and try again
   if (command.trim() === '') return true
 
@@ -33,7 +37,7 @@ export function handleSpecialCommand(command: string, context: SmartContext, deb
         messages: [],
       })
     } else if (command === '/context.smart') {
-      print.info(createSmartContextBackchat(context))
+      print.info(await createSmartContextBackchat(context))
     } else if (command === '/context') {
       print.info(context)
     }
