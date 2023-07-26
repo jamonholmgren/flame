@@ -1,21 +1,22 @@
 import { filesystem } from 'gluegun'
-import type { Message } from '../types'
+import type { SmartContext } from '../types'
 
-export async function loadFile(fileName: string, workingFolder: string) {
+export async function loadFile(fileName: string, context: SmartContext) {
+  const path = filesystem.path(`${context.workingFolder}/${fileName}`)
+
   // read the file
-  const fileContents = await filesystem.readAsync(`${workingFolder}/${fileName}`, 'utf8')
+  const contents = await filesystem.readAsync(path, 'utf8')
 
-  // add the file contents to the prompt
-  const message: Message = {
-    content: `
-Here's the contents of ${fileName}:
+  // if there is no file, return undefined
+  if (!contents) return undefined
 
-\`\`\`
-${fileContents}
-\`\`\`
-`,
-    role: 'user',
-  }
+  // TODO: get embeddings for this file
+  const embeddings = undefined
 
-  return { message, fileContents }
+  // add the file to the context or update it if it already exists
+  const file = { path: fileName, contents, embeddings }
+  context.files[fileName] = file
+
+  // return the file
+  return file
 }

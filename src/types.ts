@@ -16,6 +16,9 @@ export type SmartContext = {
   // Project context, continually updated
   project: string // "flame is a gluegun cli that uses AI to modify code"
 
+  // working folder
+  workingFolder: string
+
   // Specific tasks we are working on
   tasks: {
     name: string // "interactive smartcontext"
@@ -25,10 +28,12 @@ export type SmartContext = {
 
   // Files we have loaded
   files: {
-    path: string
-    contents: string
-    embeddings?: number[]
-  }[]
+    [path: string]: {
+      path: string
+      contents?: string // if undefined, we haven't actually loaded it, but listed the filenames/paths
+      embeddings?: number[]
+    }
+  }
 
   // Previous messages we have sent
   messages: Message[]

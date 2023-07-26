@@ -17,14 +17,16 @@ To start the interactive mode, run `flame interactive`. The current directory wi
 
 In the interactive mode, you can use the following special commands:
 
-- `exit`: Exit the interactive mode.
-- `log`: Print the current chat log.
-- `clear`: Clear the chat log.
-- `clearlast`: Clear the last message from the chat log.
-- `load <filename>`: Load a file's contents. Useful for evaluating and changing code.
-- `ls <path>`: Load a list files in the specified path. Helps the AI understand what files are available.
-- `logcompress <number>`: Compress the chat log to a specified character count to avoid token limits. It'll automatically compress the log when it gets too long, but you can also do it manually. e.g. `logcompress 5000`. Note these are characters and not tokens.
-- `debug`: Print a full list of interactions, mostly for debugging issues.
+- `/exit`: Exit the interactive mode.
+- `/log`: Print the current chat log.
+- `/context`: Print the current context.
+- `/context.smart`: Make a smart backchat from the current context and display it for debugging.
+- `/clear`: Clear the chat log.
+- `/clearlast`: Clear the last message from the chat log.
+- `/load <filename>`: Load a file's contents. Useful for evaluating and changing code.
+- `/ls <path>`: Load a list files in the specified path. Helps the AI understand what files are available.
+- `/logcompress <number>`: Compress the chat log to a specified character count to avoid token limits. It'll automatically compress the log when it gets too long, but you can also do it manually. e.g. `logcompress 5000`. Note these are characters and not tokens.
+- `/debug`: Print a full list of interactions, mostly for debugging issues.
 
 # License
 

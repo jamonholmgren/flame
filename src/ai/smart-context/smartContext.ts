@@ -1,6 +1,6 @@
 import { Message, SmartContext } from '../../types'
 
-export function smartContext(context: SmartContext): Message[] {
+export function createSmartContextBackchat(context: SmartContext): Message[] {
   // This function will provide the backchat for the interactive.ts command,
   // carefully tuned for the current context.
   // It will store both in the flame-history.json file that is created in the src/utils/chatHistory.ts functionality.
@@ -47,13 +47,20 @@ export function smartContext(context: SmartContext): Message[] {
     })
   }
 
-  // then we'll add the most relevant file(s) to the current task
-  if (context.files.length > 0) {
-    // currently, just the first file
-    const file = context.files[0]
+  const paths = Object.keys(context.files)
+  if (paths.length > 0) {
+    // then we'll add a list of all the files we know about
+    backchat.push({
+      content: `We know about these files and folders so far:\n${paths.join('\n')}`,
+      role: 'user',
+    })
+
+    // then we'll add the most relevant file(s) to the current task, if any
+    // currently, just the last file loaded (dumb I know)
+    const file = context.files[paths[paths.length - 1]]
 
     backchat.push({
-      content: `The most relevant file to the current task is ${file.path}: ${file.contents}`,
+      content: `The most relevant file to the current task is ${file.path}:\n\n${file.contents}`,
       role: 'user',
     })
   }

@@ -1,8 +1,14 @@
 import { filesystem, print } from 'gluegun'
 import { ChatCompletionFunctions } from 'openai'
+import { listFiles } from '../utils/listFiles'
+import { SmartContext } from '../types'
+import { loadFile } from '../utils/loadFile'
 
 type ChatCompletionFunction = ChatCompletionFunctions & {
-  fn: (args: any) => Promise<{
+  fn: (
+    args: unknown,
+    context: SmartContext
+  ) => Promise<{
     content?: string
     resubmit?: boolean
     error?: string
@@ -40,11 +46,14 @@ export const aiFunctions: ChatCompletionFunction[] = [
       },
       required: ['file', 'instructions'],
     },
-    fn: async (args) => {
+    fn: async (
+      args: { file: string; instructions: { findLine: string; replaceLine: string }[] },
+      context
+    ) => {
       const { file, instructions } = args
 
       // ensure that the path is not any higher than the working folder
-      if (filesystem.path(file).startsWith(args.workingFolder) === false) {
+      if (filesystem.path(file).startsWith(context.workingFolder) === false) {
         return { error: 'Cannot update a file outside of the working folder.' }
       }
 
@@ -100,9 +109,9 @@ export const aiFunctions: ChatCompletionFunction[] = [
       },
       required: ['path', 'contents'],
     },
-    fn: async (args) => {
+    fn: async (args: { path: string; contents: string }, context) => {
       // ensure that the path is not any higher than the working folder
-      if (filesystem.path(args.path).startsWith(args.workingFolder) === false) {
+      if (filesystem.path(args.path).startsWith(context.workingFolder) === false) {
         return { error: 'Cannot create a file outside of the working folder.' }
       }
 
@@ -127,19 +136,19 @@ export const aiFunctions: ChatCompletionFunction[] = [
       },
       required: ['path'],
     },
-    fn: async (args) => {
+    fn: async (args: { path: string }, context) => {
       // Read the file
-      const contents = await filesystem.readAsync(args.path, 'utf8')
+      const file = await loadFile(args.path, context)
 
-      if (contents === undefined) {
+      if (file.contents === undefined) {
         return { error: `File '${args.path}' does not exist.` }
       }
 
-      print.info(`Read ${args.path} (${contents.length} characters).`)
+      print.info(`Read ${args.path} (${file.contents.length} characters).`)
 
       // Return the contents
       return {
-        content: JSON.stringify({ path: args.path, contents }),
+        content: JSON.stringify({ path: args.path, contents: file.contents }),
         resubmit: true,
       }
     },
@@ -157,9 +166,10 @@ export const aiFunctions: ChatCompletionFunction[] = [
       },
       required: ['path'],
     },
-    fn: async (args) => {
+    fn: async (args: { path: string }, context) => {
       // List the files
-      const files = await filesystem.listAsync(args.path)
+
+      const files = await listFiles(args.path, context)
 
       print.info(`Found ${files.length} at path: ${args.path}\n`)
 
@@ -168,6 +178,27 @@ export const aiFunctions: ChatCompletionFunction[] = [
         content: JSON.stringify({ path: args.path, files }),
         resubmit: true,
       }
+    },
+  },
+  {
+    name: 'updateProjectSummary',
+    description: 'Update the project summary for the current project based on everything I know',
+    parameters: {
+      type: 'object',
+      properties: {
+        newSummary: {
+          type: 'string',
+          description: 'The new summary to use for the project.',
+        },
+      },
+      required: ['newSummary'],
+    },
+    fn: async (args: { newSummary: string }, context) => {
+      // Update the project summary
+      context.project = args.newSummary
+
+      // We're done, wait for further instructions
+      return { content: undefined }
     },
   },
 ]

@@ -1,6 +1,6 @@
 import { GluegunCommand } from 'gluegun'
 import { chatGPTPrompt } from '../ai/openai'
-import { smartContext } from '../ai/smart-context/smartContext'
+import { createSmartContextBackchat } from '../ai/smart-context/smartContext'
 import { aiFunctions } from '../ai/functions'
 import { loadSmartContext, saveSmartContext } from '../ai/smart-context/persistSmartContext'
 import { loadFile } from '../utils/loadFile'
@@ -9,13 +9,15 @@ import { handleSpecialCommand } from '../utils/handleSpecialCommand'
 import { initialPrompt, statusPrompt } from '../utils/interactiveInitialPrompt'
 import { handleFunctionCall } from '../utils/handleFunctionCall'
 import { listFiles } from '../utils/listFiles'
+import { generateProjectSummary } from '../utils/generateProjectSummary'
 
 // context holds the current state of the chat
 const context: SmartContext = {
   project: '',
   tasks: [],
-  files: [],
+  files: {},
   messages: [],
+  workingFolder: '',
 }
 
 // debugLog holds everything we've done so far
@@ -28,7 +30,7 @@ const command: GluegunCommand = {
     const { print, parameters, prompt, filesystem } = toolbox
 
     // first parameter is the folder we want to work in
-    const workingFolder: string = filesystem.path(parameters.first)
+    context.workingFolder = filesystem.path(parameters.first)
 
     // load/save history?
     const saveHistory = parameters.options.history !== false
@@ -37,12 +39,7 @@ const command: GluegunCommand = {
     if (saveHistory) {
       const spinner = print.spin('Loading chat history...')
       try {
-        const newContext = await loadSmartContext(workingFolder)
-
-        context.tasks = newContext.tasks
-        context.files = newContext.files
-        context.messages = newContext.messages
-
+        await loadSmartContext(context)
         spinner.succeed('Chat history loaded.')
       } catch (error) {
         spinner.fail('Failed to load chat history.')
@@ -51,7 +48,28 @@ const command: GluegunCommand = {
 
     // interactive loop
     while (true) {
-      // show an interactive prompt if not resubmitting
+      // update the existing files in the working folder
+      await listFiles('.', context)
+
+      // let's generate a project summary if we don't have one yet
+      if (!context.project) {
+        const summarySpinner = print.spin('Generating project summary...')
+
+        await generateProjectSummary(context)
+        context.messages.push({ content: context.project, role: 'user' })
+        context.messages.push({
+          content: 'What else can you tell me about this project?',
+          role: 'assistant',
+        })
+        summarySpinner.succeed('Project summary generated.')
+
+        print.info(``)
+        print.info(`${context.project}`)
+        print.info(``)
+        print.info(`What else can you tell me about this project?`)
+      }
+
+      // show an interactive prompt
       print.info('')
       const result = await prompt.ask({ type: 'input', name: 'chatMessage', message: '→ ' })
       print.info('')
@@ -68,13 +86,16 @@ const command: GluegunCommand = {
       if (handleSpecialCommand(result.chatMessage, context, debugLog)) continue
 
       // if the prompt starts with "load ", load a file into the prompt
-      if (result.chatMessage.startsWith('load ')) {
+      if (result.chatMessage.startsWith('/load ')) {
         const fileName = result.chatMessage.slice(5)
-        const { message, fileContents } = await loadFile(fileName, workingFolder)
-        context.messages.push(message)
+        const file = await loadFile(fileName, context)
 
-        // print that we loaded it
-        print.info(`Loaded ${fileName} (${fileContents.length} characters)`)
+        if (file) {
+          print.info(`Loaded ${fileName} (${file.contents.length} characters)`)
+        } else {
+          print.error(`Could not find ${fileName}.`)
+        }
+
         continue
       }
 
@@ -82,9 +103,12 @@ const command: GluegunCommand = {
       if (result.chatMessage.startsWith('ls ')) {
         const path = filesystem.path(result.chatMessage.slice(3))
         const spinner = print.spin(`Listing ${path}...`)
-        const { message } = await listFiles(path)
+        const files = await listFiles(path, context)
         spinner.succeed(`Listed ${path}.`)
-        context.messages.push(message)
+        context.messages.push({
+          content: `Files in ${path}:\n${files.join('\n')}`,
+          role: 'user',
+        })
 
         // print that we loaded it
         print.info(`Listed ${path}`)
@@ -99,13 +123,13 @@ const command: GluegunCommand = {
       for (let i = 0; i < 5; i++) {
         // age messages to avoid going over max prompt size
         // ageMessages(prevMessages, 12000)
-        const smartMessages = smartContext(context)
+        const backchat = createSmartContextBackchat(context)
 
         // send to ChatGPT
         const spinner = print.spin('AI is thinking...')
         const response = await chatGPTPrompt({
           functions: aiFunctions,
-          messages: [initialPrompt, statusPrompt(workingFolder), ...smartMessages],
+          messages: [initialPrompt, statusPrompt(context.workingFolder), ...backchat],
         })
         spinner.stop() // no need to show the spinner anymore
 
@@ -127,7 +151,7 @@ const command: GluegunCommand = {
 
         // if we have a function call, handle it
         const fnSpinner = print.spin(`Running ${response.function_call.name}...`)
-        const functionCallResponse = await handleFunctionCall(response, aiFunctions, workingFolder)
+        const functionCallResponse = await handleFunctionCall(response, aiFunctions, context)
         fnSpinner.succeed(`${response.function_call.name} complete.`)
         debugLog.push(functionCallResponse)
 
@@ -156,7 +180,7 @@ const command: GluegunCommand = {
       }
 
       // persist the chat history
-      if (saveHistory) await saveSmartContext(workingFolder, context)
+      if (saveHistory) await saveSmartContext(context)
     }
   },
 }
