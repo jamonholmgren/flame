@@ -44,19 +44,9 @@ export function createSmartContextBackchat(context: SmartContext): Message[] {
   }
 
   // then we'll add the previous messages that are relevant to the current task
-  if (context.messages.length > 5) {
+  if (context.messages.length > 1) {
     // currently, just the 5 messages before the 5 most recent messages
-    const messages = context.messages.slice(-10, -5)
-
-    messages.forEach((message) => {
-      backchat.push(message)
-    })
-  }
-
-  // then we'll add the most recent messages
-  if (context.messages.length > 0) {
-    // currently, just the 5 most recent messages
-    const messages = context.messages.slice(-5)
+    const messages = context.messages.slice(-10, -1)
 
     messages.forEach((message) => {
       backchat.push(message)
@@ -70,10 +60,20 @@ export function createSmartContextBackchat(context: SmartContext): Message[] {
     // if we have a current file, we'll add it
     if (file) {
       backchat.push({
-        content: `The file for the current task is ${file.path}:\n\n${file.contents}`,
+        content: `The contents of ${file.path} are:\n\n${file.contents}`,
         role: 'user',
       })
     }
+  }
+
+  // then we'll add the most recent message
+  if (context.messages.length > 0) {
+    // currently, just the most recent message
+    const messages = context.messages.slice(-1)
+
+    messages.forEach((message) => {
+      backchat.push(message)
+    })
   }
 
   return backchat
