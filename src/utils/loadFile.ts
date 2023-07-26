@@ -31,43 +31,38 @@ export async function loadFile(fileName: string, context: SmartContext) {
     const response = await chatGPTPrompt({
       messages: [
         {
+          role: 'system',
+          content: `
+You are a high-powered code compression algorithm.
+For code, you remove function bodies and comments.
+You leave only the function signatures or classes and their method signatures.
+You strip out any function bodies and comments, and leave only a short comment like:
+
+function foo() {
+  // omitted
+}
+
+For text files, you summarize every paragraph in a tiny sentence.
+`,
+        },
+        {
           role: 'user',
           content: `
-Take this code and summarize it / shorten it quite a bit by removing all function bodies
-and replacing them with one very short comment that says what the function does,
-and reply back with it to me.
-
-Examples:
-
-export function foo() {
-  // omitted: prints 'hello foo'
-}
-
-export const bar = () => {
-  // omitted: prints 'hello bar'
-}
-
-export class Baz {
-  constructor() {
-    // omitted: sets variables
-  }
-
-  bye() {
-    // omitted: returns 'bye baz'
-  }
-}
-
-Actual file contents:
+Please compress this file:
 
 \`\`\`
-${file.contents}
+${
+  file.contents.length < 3000
+    ? file.contents
+    : file.contents.slice(0, 3000) + '...truncated for brevity'
+}
 \`\`\`
 `,
         },
       ],
       model: 'gpt-3.5-turbo',
     })
-    file.shortened = response.content
+    file.shortened = `Compressed/shortened for brevity:\n\n${response.content}`
   }
 
   // return the file
