@@ -78,5 +78,10 @@ export async function handleSpecialCommand(
     return true
   }
 
+  if (command === '/help') {
+    print.info('Available commands:\n/context: Show the current context\n/debug: Print the previous messages\n/log: Print the chat log\n/clear: Clear the chat log\n/clearlast: Clear the last message');
+    return true;
+  }
+
   return false
 }

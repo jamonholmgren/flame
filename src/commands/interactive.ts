@@ -31,6 +31,8 @@ const command: GluegunCommand = {
   run: async (toolbox) => {
     const { print, parameters, prompt, filesystem } = toolbox
 
+    print.info('Welcome to Flame CLI Interactive Mode! Type /help for a list of commands.')
+
     // first parameter is the folder we want to work in
     context.workingFolder = parameters.first ? filesystem.path(parameters.first) : filesystem.cwd()
 
