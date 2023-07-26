@@ -34,8 +34,14 @@ const contextUpdaterFunctions = {
 }
 
 const updateProjectAndTask = (args: ContextUpdaterArgs, context: SmartContext) => {
-  if (args.newProjectDescription) context.project = args.newProjectDescription
-  if (args.newTaskDescription) context.currentTask = args.newTaskDescription
+  if (args.newProjectDescription) {
+    context.project = args.newProjectDescription
+    print.info(`Updated project description to: ${context.project}`)
+  }
+  if (args.newTaskDescription) {
+    context.currentTask = args.newTaskDescription
+    print.info(`Updated task description to: ${context.currentTask}`)
+  }
 }
 
 export const aiFunctions: ChatCompletionFunction[] = [

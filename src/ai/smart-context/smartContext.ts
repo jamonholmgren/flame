@@ -1,6 +1,7 @@
 import { Message, SmartContext } from '../../types'
+import { loadFile } from '../../utils/loadFile'
 
-export function createSmartContextBackchat(context: SmartContext): Message[] {
+export async function createSmartContextBackchat(context: SmartContext): Promise<Message[]> {
   // This function will provide the backchat for the interactive.ts command,
   // carefully tuned for the current context.
   // It will store both in the flame-history.json file that is created in the src/utils/chatHistory.ts functionality.
@@ -26,14 +27,6 @@ export function createSmartContextBackchat(context: SmartContext): Message[] {
     })
   }
 
-  // then we'll add the current task
-  if (context.currentTask) {
-    backchat.push({
-      content: `Current task: ${context.currentTask}`,
-      role: 'user',
-    })
-  }
-
   const paths = Object.keys(context.files)
   if (paths.length > 0) {
     // then we'll add a list of all the files we know about
@@ -43,9 +36,17 @@ export function createSmartContextBackchat(context: SmartContext): Message[] {
     })
   }
 
+  // then we'll add the current task
+  if (context.currentTask) {
+    backchat.push({
+      content: `The task we've been working on is: ${context.currentTask}\n(please update current task if not accurate)`,
+      role: 'user',
+    })
+  }
+
   // then we'll add the previous messages that are relevant to the current task
   if (context.messages.length > 1) {
-    // currently, just the 5 messages before the 5 most recent messages
+    // currently, just the 9 previous messages, not counting the current one
     const messages = context.messages.slice(-10, -1)
 
     messages.forEach((message) => {
@@ -55,10 +56,11 @@ export function createSmartContextBackchat(context: SmartContext): Message[] {
 
   // then we'll add the current file
   if (context.currentFile) {
-    const file = context.files[context.currentFile]
+    // refresh it from the filesystem to get the latest version
+    const file = await loadFile(context.currentFile, context)
 
     // if we have a current file, we'll add it to the backchat as if we just read it in a function call
-    if (file) {
+    if (file && file.contents) {
       backchat.push({
         role: 'assistant',
         content: null,
@@ -67,10 +69,18 @@ export function createSmartContextBackchat(context: SmartContext): Message[] {
           arguments: JSON.stringify({ path: context.currentFile }),
         },
       })
+
+      // if the file.contents length < 8000, use that
+      // otherwise, just use the first 8000 characters
+      const content =
+        file.contents.length < 8000
+          ? file.contents
+          : file.contents.slice(0, 8000) + '\n(...rest of file omitted for brevity)'
+
       backchat.push({
         role: 'function',
         name: 'readFileAndReportBack',
-        content: file.contents,
+        content,
       })
     }
   }

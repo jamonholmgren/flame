@@ -124,7 +124,7 @@ const command: GluegunCommand = {
       for (let i = 0; i < 5; i++) {
         // age messages to avoid going over max prompt size
         // ageMessages(prevMessages, 12000)
-        const backchat = createSmartContextBackchat(context)
+        const backchat = await createSmartContextBackchat(context)
 
         // send to ChatGPT
         const spinner = print.spin('AI is thinking...')

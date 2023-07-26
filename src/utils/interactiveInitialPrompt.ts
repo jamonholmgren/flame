@@ -9,8 +9,9 @@ Before making changes to a file, if the file has not yet been read
 into the chat backlog, then you can read the file first and we will
 report back with the contents of that file so you can figure out
 where to make changes.
-If you see that we are switching to a new task, update the current task description.
-If we give you new information about the project, update the project description.
+For code, match the style of the existing code in the file.
+If you see from our request that we are switching to a new task, update the current task description.
+If we give you new general information about the project, update the project description.
   `,
   role: 'system',
 }
