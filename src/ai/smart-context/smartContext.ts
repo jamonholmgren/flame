@@ -55,11 +55,10 @@ export async function createSmartContextBackchat(context: SmartContext): Promise
       })
       .filter((a) => a.similarity > 0.7) // has to be > 70% or we don't show it
       .sort((a, b) => b.similarity - a.similarity)
-      .map((a) => a.file)
 
     if (relevantFiles.length > 0) {
       // grab the first 3 most relevant files
-      relevantFiles.slice(0, 3).forEach((file) => {
+      relevantFiles.slice(0, 3).forEach(({ file, similarity }) => {
         backchat.push({
           role: 'assistant',
           content: null,
@@ -69,10 +68,16 @@ export async function createSmartContextBackchat(context: SmartContext): Promise
           },
         })
 
+        // the very first file, if it's really high relevancy, we'll use the full contents
+        const content =
+          file === relevantFiles[0].file && similarity > 0.9
+            ? file.contents
+            : file.shortened || file.contents // or shortened version for less relevant files
+
         backchat.push({
           role: 'function',
           name: 'readFileAndReportBack',
-          content: file.shortened || file.contents,
+          content,
         })
       })
     }

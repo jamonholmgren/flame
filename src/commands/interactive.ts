@@ -160,9 +160,8 @@ const command: GluegunCommand = {
         if (!response.function_call) break // no function call, so we're done with this loop
 
         // if we have a function call, handle it
-        const fnSpinner = print.spin(`Running ${response.function_call.name}...`)
         const functionCallResponse = await handleFunctionCall(response, aiFunctions, context)
-        fnSpinner.succeed(`${response.function_call.name} complete.`)
+
         debugLog.push(functionCallResponse)
 
         // if we have an error, print it and stop

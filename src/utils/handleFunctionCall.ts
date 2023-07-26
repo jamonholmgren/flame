@@ -22,18 +22,24 @@ export async function handleFunctionCall(
   const func = functions.find((f) => f.name === functionName)
 
   if (func) {
+    const fnSpinner = print.spin(`Running ${functionName}...`)
     const result = await func.fn(functionArgs, context)
 
     if (result.error) {
-      print.error(`Error: ${result.error}`)
+      fnSpinner.fail(`Error: ${result.error}`)
     } else if (result.patches) {
-      print.success(`Updated ${functionArgs.file} with these changes:`)
+      fnSpinner.succeed(`${response.function_call.name} complete.`)
+
+      print.success(`\nUpdated ${functionArgs.file} with these changes:\n`)
+
       result.patches.forEach((patch) => {
         print.error(`- ${patch.findLine}`)
         print.success(`+ ${patch.replaceLine}`)
       })
+
+      print.info(``)
     } else {
-      print.info(`${functionName} complete.`)
+      fnSpinner.succeed(`${functionName} complete.`)
     }
 
     return result
