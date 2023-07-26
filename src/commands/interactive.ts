@@ -31,7 +31,7 @@ const command: GluegunCommand = {
     const { print, parameters, prompt, filesystem } = toolbox
 
     // first parameter is the folder we want to work in
-    context.workingFolder = filesystem.path(parameters.first)
+    context.workingFolder = parameters.first ? filesystem.path(parameters.first) : filesystem.cwd()
 
     // load/save history?
     const saveHistory = parameters.options.history !== false
