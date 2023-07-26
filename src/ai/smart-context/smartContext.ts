@@ -11,10 +11,10 @@ export function createSmartContextBackchat(context: SmartContext): Message[] {
   // a good backchat will include:
   // - what the project is all about
   // - what the current task is
-  // - what other tasks we know about
   // - the most relevant file(s) to the current task
   // - previous messages that are relevant to the current task
-  // - the most recent messages
+  // - the current file
+  // - the most recent message
 
   const backchat: Message[] = []
 
@@ -57,11 +57,20 @@ export function createSmartContextBackchat(context: SmartContext): Message[] {
   if (context.currentFile) {
     const file = context.files[context.currentFile]
 
-    // if we have a current file, we'll add it
+    // if we have a current file, we'll add it to the backchat as if we just read it in a function call
     if (file) {
       backchat.push({
-        content: `The contents of ${file.path} are:\n\n${file.contents}`,
-        role: 'user',
+        role: 'assistant',
+        content: null,
+        function_call: {
+          name: 'readFileAndReportBack',
+          arguments: JSON.stringify({ path: context.currentFile }),
+        },
+      })
+      backchat.push({
+        role: 'function',
+        name: 'readFileAndReportBack',
+        content: file.contents,
       })
     }
   }
