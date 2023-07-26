@@ -9,7 +9,13 @@ export async function handleFunctionCall(
   context: SmartContext
 ) {
   const functionName = response.function_call.name
-  const functionArgs = JSON.parse(response.function_call.arguments)
+  let functionArgs
+  try {
+    functionArgs = JSON.parse(response.function_call.arguments)
+  } catch (error) {
+    console.error(`Error parsing function arguments: ${error}`)
+    return { error: `Error parsing function arguments: ${error}` }
+  }
 
   // Look up function in the registry and call it with the parsed arguments
   const func = functions.find((f) => f.name === functionName)
