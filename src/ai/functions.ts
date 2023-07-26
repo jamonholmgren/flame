@@ -181,7 +181,7 @@ export const aiFunctions: ChatCompletionFunction[] = [
       // Read the file
       const file = await loadFile(args.path, context)
 
-      if (file.contents === undefined) {
+      if (!file || file.contents === undefined) {
         return { error: `File '${args.path}' does not exist.` }
       }
 

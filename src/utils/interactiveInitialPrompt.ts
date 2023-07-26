@@ -18,6 +18,6 @@ If we give you new general information about the project, update the project des
 
 // status -- time, date, working folder
 export const statusPrompt = (workingFolder: string): Message => ({
-  content: `Current date: ${new Date().toLocaleString()}\nCurrent folder: ${workingFolder}`,
+  content: `Current date: ${new Date().toLocaleString()}\nProject base folder: ${workingFolder}`,
   role: 'system',
 })

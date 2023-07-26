@@ -1,6 +1,6 @@
 // export types
 
-import { ChatCompletionRequestMessage } from 'openai'
+import { ChatCompletionRequestMessage, CreateEmbeddingResponseDataInner } from 'openai'
 
 export type Message = ChatCompletionRequestMessage
 
@@ -24,7 +24,8 @@ export type SmartContext = {
     [path: string]: {
       path: string
       contents?: string // if undefined, we haven't actually loaded it, but listed the filenames/paths
-      embeddings?: number[]
+      embeddings?: CreateEmbeddingResponseDataInner
+      shortened?: string
     }
   }
 

@@ -64,3 +64,14 @@ export const chatGPTPrompt = async ({
 
   return response.data.choices[0].message
 }
+
+export async function createEmbedding(text: string) {
+  const ai = await openAI()
+
+  const embeddingsResponse = await ai.createEmbedding({
+    input: text,
+    model: 'text-embedding-ada-002',
+  })
+
+  return embeddingsResponse.data.data
+}
