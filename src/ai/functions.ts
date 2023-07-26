@@ -15,6 +15,29 @@ type ChatCompletionFunction = ChatCompletionFunctions & {
   }>
 }
 
+type ContextUpdaterArgs = {
+  newProjectDescription?: string
+  newTaskDescription?: string
+}
+
+const contextUpdaterFunctions = {
+  newProjectDescription: {
+    type: 'string',
+    description:
+      'Optional: new general project description to use for the current project, based on everything we know so far, if the existing project description is not accurate.',
+  },
+  newTaskDescription: {
+    type: 'string',
+    description:
+      'Optional: new task description to use for the current task, based on everything we know so far, if the existing task description is not accurate.',
+  },
+}
+
+const updateProjectAndTask = (args: ContextUpdaterArgs, context: SmartContext) => {
+  if (args.newProjectDescription) context.project = args.newProjectDescription
+  if (args.newTaskDescription) context.currentTask = args.newTaskDescription
+}
+
 export const aiFunctions: ChatCompletionFunction[] = [
   {
     name: 'patchLines',
@@ -42,15 +65,21 @@ export const aiFunctions: ChatCompletionFunction[] = [
               },
             },
           },
+          ...contextUpdaterFunctions,
         },
       },
       required: ['file', 'instructions'],
     },
     fn: async (
-      args: { file: string; instructions: { findLine: string; replaceLine: string }[] },
+      args: {
+        file: string
+        instructions: { findLine: string; replaceLine: string }[]
+      } & ContextUpdaterArgs,
       context
     ) => {
       const { file, instructions } = args
+
+      updateProjectAndTask(args, context)
 
       // ensure that the path is not any higher than the working folder
       if (filesystem.path(file).startsWith(context.workingFolder) === false) {
@@ -106,10 +135,13 @@ export const aiFunctions: ChatCompletionFunction[] = [
           type: 'string',
           description: 'The contents of the file to create.',
         },
+        ...contextUpdaterFunctions,
       },
       required: ['path', 'contents'],
     },
-    fn: async (args: { path: string; contents: string }, context) => {
+    fn: async (args: { path: string; contents: string } & ContextUpdaterArgs, context) => {
+      updateProjectAndTask(args, context)
+
       // ensure that the path is not any higher than the working folder
       if (filesystem.path(args.path).startsWith(context.workingFolder) === false) {
         return { error: 'Cannot create a file outside of the working folder.' }
@@ -133,10 +165,13 @@ export const aiFunctions: ChatCompletionFunction[] = [
           type: 'string',
           description: 'The path of the file to read.',
         },
+        ...contextUpdaterFunctions,
       },
       required: ['path'],
     },
-    fn: async (args: { path: string }, context) => {
+    fn: async (args: { path: string } & ContextUpdaterArgs, context) => {
+      updateProjectAndTask(args, context)
+
       // Read the file
       const file = await loadFile(args.path, context)
 
@@ -163,10 +198,13 @@ export const aiFunctions: ChatCompletionFunction[] = [
           type: 'string',
           description: 'The path of the folder to list the contents of.',
         },
+        ...contextUpdaterFunctions,
       },
       required: ['path'],
     },
-    fn: async (args: { path: string }, context) => {
+    fn: async (args: { path: string } & ContextUpdaterArgs, context) => {
+      updateProjectAndTask(args, context)
+
       // List the files
 
       const files = await listFiles(args.path, context)
@@ -187,29 +225,14 @@ export const aiFunctions: ChatCompletionFunction[] = [
     parameters: {
       type: 'object',
       properties: {
-        newSummary: {
-          type: 'string',
-          description: 'The new summary to use for the project.',
-        },
-        newTaskDescription: {
-          type: 'string',
-          description: 'The new task description to use for the current task.',
-        },
+        ...contextUpdaterFunctions,
       },
     },
-    fn: async (args: { newSummary: string; newTaskDescription: string }, context) => {
-      // Update the project summary
-      if (args.newSummary) context.project = args.newSummary
-      if (args.newTaskDescription) context.currentTask = args.newTaskDescription
-
-      // prints the new summary
-      // print.info(`Project summary:\n\n${context.project}\n\n`)
-
-      // prints the new task
-      // print.info(`Current task: ${context.currentTask}\n\n`)
-
-      // prints the current file
-      // print.info(`Current file: ${context.currentFile}\n\n`)
+    fn: async (
+      args: { newSummary: string; newTaskDescription: string } & ContextUpdaterArgs,
+      context
+    ) => {
+      updateProjectAndTask(args, context)
 
       // We're done, wait for further instructions
       return { content: undefined }
