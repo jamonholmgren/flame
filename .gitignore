@@ -7,3 +7,4 @@ dist
 build
 .vscode
 .config/flame/flame-history.json
+.config/flame/flame-data.json
