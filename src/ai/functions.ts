@@ -84,7 +84,7 @@ export const aiFunctions: ChatCompletionFunction[] = [
       // Write the file
       await filesystem.writeAsync(file, fileContents)
 
-      print.info(`Updated ${file} with ${response.patches} patches.`)
+      // print.info(`Updated ${file} with ${response.patches} patches.`)
 
       // return the response
       return {
@@ -118,7 +118,7 @@ export const aiFunctions: ChatCompletionFunction[] = [
       // Create the file
       await filesystem.writeAsync(args.path, args.contents)
 
-      print.info(`Created ${args.path}.`)
+      // print.info(`Created ${args.path}.`)
 
       return { content: JSON.stringify({ path: args.path }) }
     },
@@ -144,7 +144,7 @@ export const aiFunctions: ChatCompletionFunction[] = [
         return { error: `File '${args.path}' does not exist.` }
       }
 
-      print.info(`Read ${args.path} (${file.contents.length} characters).`)
+      // print.info(`Read ${args.path} (${file.contents.length} characters).`)
 
       // Since we now have the file and it is set as the current file, we can resubmit
       return {
@@ -171,7 +171,7 @@ export const aiFunctions: ChatCompletionFunction[] = [
 
       const files = await listFiles(args.path, context)
 
-      print.info(`Found ${files.length} at path: ${args.path}\n`)
+      // print.info(`Found ${files.length} at path: ${args.path}\n`)
 
       // Return the contents
       return {
@@ -203,13 +203,13 @@ export const aiFunctions: ChatCompletionFunction[] = [
       if (args.newTaskDescription) context.currentTask = args.newTaskDescription
 
       // prints the new summary
-      print.info(`Project summary:\n\n${context.project}\n\n`)
+      // print.info(`Project summary:\n\n${context.project}\n\n`)
 
       // prints the new task
-      print.info(`Current task: ${context.currentTask}\n\n`)
+      // print.info(`Current task: ${context.currentTask}\n\n`)
 
       // prints the current file
-      print.info(`Current file: ${context.currentFile}\n\n`)
+      // print.info(`Current file: ${context.currentFile}\n\n`)
 
       // We're done, wait for further instructions
       return { content: undefined }
