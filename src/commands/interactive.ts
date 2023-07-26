@@ -13,11 +13,12 @@ import { generateProjectSummary } from '../utils/generateProjectSummary'
 
 // context holds the current state of the chat
 const context: SmartContext = {
+  workingFolder: '',
   project: '',
-  tasks: [],
+  currentTask: '',
+  currentFile: '',
   files: {},
   messages: [],
-  workingFolder: '',
 }
 
 // debugLog holds everything we've done so far

@@ -26,23 +26,10 @@ export function createSmartContextBackchat(context: SmartContext): Message[] {
     })
   }
 
-  // we'll get the current task (currently, just the first task)
-  const task = context.tasks[0]
-
-  // then we'll add the other tasks we know about
-  if (context.tasks.length > 1) {
-    const otherTasks = context.tasks.slice(1)
-    backchat.push({
-      content: `We worked on these tasks: ${otherTasks.map((task) => task.name).join(', ')}`,
-      role: 'user',
-    })
-  }
-
   // then we'll add the current task
-  if (task) {
-    const task = context.tasks[0]
+  if (context.currentTask) {
     backchat.push({
-      content: `The current task we are working on is ${task.name}: ${task.contents}`,
+      content: `Current task: ${context.currentTask}`,
       role: 'user',
     })
   }

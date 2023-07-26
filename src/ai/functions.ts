@@ -181,8 +181,9 @@ export const aiFunctions: ChatCompletionFunction[] = [
     },
   },
   {
-    name: 'updateProjectSummary',
-    description: 'Update the project summary for the current project based on everything I know',
+    name: 'updateProjectSummaryAndTask',
+    description:
+      'Update the project summary and current task for the current project based on everything I know so far',
     parameters: {
       type: 'object',
       properties: {
@@ -190,15 +191,25 @@ export const aiFunctions: ChatCompletionFunction[] = [
           type: 'string',
           description: 'The new summary to use for the project.',
         },
+        newTaskDescription: {
+          type: 'string',
+          description: 'The new task description to use for the current task.',
+        },
       },
-      required: ['newSummary'],
     },
-    fn: async (args: { newSummary: string }, context) => {
+    fn: async (args: { newSummary: string; newTaskDescription: string }, context) => {
       // Update the project summary
-      context.project = args.newSummary
+      if (args.newSummary) context.project = args.newSummary
+      if (args.newTaskDescription) context.currentTask = args.newTaskDescription
 
       // prints the new summary
-      print.info(`Updated project summary:\n\n${context.project}\n`)
+      print.info(`Project summary:\n\n${context.project}\n\n`)
+
+      // prints the new task
+      print.info(`Current task: ${context.currentTask}\n\n`)
+
+      // prints the current file
+      print.info(`Current file: ${context.currentFile}\n\n`)
 
       // We're done, wait for further instructions
       return { content: undefined }

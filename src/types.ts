@@ -19,13 +19,6 @@ export type SmartContext = {
   // working folder
   workingFolder: string
 
-  // Specific tasks we are working on
-  tasks: {
-    name: string // "interactive smartcontext"
-    contents: string // "create a smartcontext that can be used in the interactive command"
-    embeddings?: number[] // embedding to determine relevance to current messages
-  }[]
-
   // Files we have loaded
   files: {
     [path: string]: {
@@ -37,6 +30,9 @@ export type SmartContext = {
 
   // Current file we are working on
   currentFile?: string
+
+  // Description of current task we are working on
+  currentTask?: string
 
   // Previous messages we have sent
   messages: Message[]

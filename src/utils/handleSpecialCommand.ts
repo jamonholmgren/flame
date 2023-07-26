@@ -16,8 +16,8 @@ export function handleSpecialCommand(command: string, context: SmartContext, deb
   if (command.startsWith('/context.') || command === 'context') {
     if (command === '/context.project') {
       print.info(context.project)
-    } else if (command === '/context.tasks') {
-      print.info(context.tasks)
+    } else if (command === '/context.task') {
+      print.info(context.currentTask)
     } else if (command === '/context.files') {
       print.info(context.files)
     } else if (command === '/context.messages') {
@@ -27,7 +27,8 @@ export function handleSpecialCommand(command: string, context: SmartContext, deb
     } else if (command === '/context.clear') {
       Object.assign(context, {
         project: '',
-        tasks: [],
+        currentTask: '',
+        currentFile: '',
         files: {},
         messages: [],
       })
