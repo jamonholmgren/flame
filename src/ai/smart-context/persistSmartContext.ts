@@ -33,5 +33,5 @@ export async function saveSmartContext(context: SmartContext) {
   await filesystem.dirAsync(path)
 
   // write the context
-  await filesystem.writeAsync(`${path}/${flameFile}`, JSON.stringify(context))
+  await filesystem.writeAsync(`${path}/${flameFile}`, JSON.stringify(context, null, 2))
 }

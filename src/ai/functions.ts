@@ -224,6 +224,14 @@ export const aiFunctions: ChatCompletionFunction[] = [
 
       content += `Found ${files.length} at path: ${args.path}\n`
 
+      for (let file of files) {
+        const filepath = `${args.path}/${file}`
+        context.files[filepath] = {
+          path: filepath,
+          contents: undefined,
+        }
+      }
+
       // Return the contents
       return {
         content,

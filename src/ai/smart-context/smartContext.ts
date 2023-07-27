@@ -1,3 +1,4 @@
+import { print } from 'gluegun'
 import { Message, SmartContext } from '../../types'
 import { cosineSimilarity } from '../../utils/cosignSimilarity'
 import { loadFile } from '../../utils/loadFile'
@@ -20,12 +21,15 @@ export async function createSmartContextBackchat(context: SmartContext): Promise
 
   const backchat: Message[] = []
 
+  let smartContextDescription = ``
+
   // we'll start with the main project information
   if (context.project) {
     backchat.push({
       content: context.project,
       role: 'user',
     })
+    smartContextDescription += 'project • '
   }
 
   const paths = Object.keys(context.files)
@@ -35,6 +39,7 @@ export async function createSmartContextBackchat(context: SmartContext): Promise
       content: `We know about these files and folders so far:\n${paths.join('\n')}`,
       role: 'user',
     })
+    smartContextDescription += `file list (${paths.length}) • `
   }
 
   // let's add any relevant files, using the embeddings
@@ -79,6 +84,8 @@ export async function createSmartContextBackchat(context: SmartContext): Promise
           name: 'readFileAndReportBack',
           content,
         })
+
+        smartContextDescription += `${file.path.split('/').slice(-1)[0]} • `
       })
     }
   }
@@ -89,6 +96,8 @@ export async function createSmartContextBackchat(context: SmartContext): Promise
       content: `The task we've been working on is: ${context.currentTask}\n(please update current task if not accurate)`,
       role: 'user',
     })
+
+    smartContextDescription += `current task • `
   }
 
   // then we'll add the previous messages that are relevant to the current task
@@ -99,6 +108,8 @@ export async function createSmartContextBackchat(context: SmartContext): Promise
     messages.forEach((message) => {
       backchat.push(message)
     })
+
+    smartContextDescription += `${messages.length + 1} previous messages • `
   }
 
   // then we'll add the current (last-loaded) file
@@ -129,6 +140,8 @@ export async function createSmartContextBackchat(context: SmartContext): Promise
         name: 'readFileAndReportBack',
         content,
       })
+
+      smartContextDescription += `${context.currentFile.split('/').slice(-1)[0]} • `
     }
   }
 
@@ -140,7 +153,11 @@ export async function createSmartContextBackchat(context: SmartContext): Promise
     messages.forEach((message) => {
       backchat.push(message)
     })
+
+    smartContextDescription += `most recent message • `
   }
+
+  print.info(print.colors.gray(`\nSending: ${smartContextDescription}...\n`))
 
   return backchat
 }

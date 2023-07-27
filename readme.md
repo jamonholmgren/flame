@@ -32,6 +32,10 @@ In the interactive mode, you can use the following special commands:
 
 The philosophy behind Flame is that you should be able to tell it to make changes to your code in plain English, and it can create a plan and actually make those changes to your code, writing very good code that matches the rest of your project.
 
+## File Structure
+
+Like most Gluegun apps, the commands live in src/commands and there are utility functions in src/utils. There's also a bunch of ai related functionality in src/ai.
+
 # License
 
 Proprietary, Infinite Red and Jamon Holmgren.

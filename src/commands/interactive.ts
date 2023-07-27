@@ -152,7 +152,6 @@ const command: GluegunCommand = {
         // ageMessages(prevMessages, 12000)
         const backchat = await createSmartContextBackchat(context)
 
-        // send to ChatGPT
         const spinner = print.spin('AI is thinking...')
         const response = await chatGPTPrompt({
           functions: aiFunctions,

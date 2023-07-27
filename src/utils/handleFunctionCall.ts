@@ -42,7 +42,7 @@ export async function handleFunctionCall(
 
       result.patches.forEach((patch) => {
         print.error(`- ${patch.findLine}`)
-        print.success(`+ ${patch.replaceLine}`)
+        print.success(`+ ${patch.replaceLine.split('\n').join('\n  ')}`)
       })
 
       print.info(``)
