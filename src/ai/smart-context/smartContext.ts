@@ -68,6 +68,7 @@ export async function createSmartContextBackchat(context: SmartContext): Promise
     for (const message of messages) {
       if (message.role !== 'function' || message.function_call?.name === 'readFileAndReportBack') {
         backchat.push(message)
+        continue
       }
 
       // we have a file read function, so we'll add the file contents ... if relevant to the current task

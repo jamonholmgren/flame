@@ -81,9 +81,9 @@ const command: GluegunCommand = {
     )
     await saveSmartContext(context)
     fileLoaderSpinner.succeed(
-      `Okay, I've looked through ${
+      `All set! I just browsed through ${
         Object.keys(context.files).length
-      } files and have some idea what they do.`
+      } files. Now, we're ready to tackle anything together!\n`
     )
 
     // interactive loop
@@ -101,9 +101,9 @@ const command: GluegunCommand = {
         summarySpinner.succeed('Project summary generated.')
 
         print.info(``)
-        print.info(`${context.project}`)
+        print.info(`Project description: ${gray(context.project)}`)
         print.info(``)
-        print.info(`What task are you looking to do today?`)
+        print.highlight(`What task are you looking to do today?`)
       }
 
       // show an interactive prompt
@@ -162,7 +162,7 @@ const command: GluegunCommand = {
         // print and log the response content if there is any
         if (response.content) {
           print.info(``)
-          print.info(`${response.content}`)
+          print.highlight(`${response.content}`)
           print.info(``)
         }
 

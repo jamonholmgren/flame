@@ -42,11 +42,11 @@ const updateProjectAndTask = (args: ContextUpdaterArgs, context: SmartContext) =
 
   if (args.newProjectDescription) {
     context.project = args.newProjectDescription
-    result += `Updated project description to: ${context.project}\n`
+    result += `Updated project description to: ${context.project}\n\n`
   }
   if (args.newTaskDescription) {
     context.currentTask = args.newTaskDescription
-    result += `Updated task description to: ${context.currentTask}\n`
+    result += `Updated task description to: ${context.currentTask}\n\n`
   }
 
   return result

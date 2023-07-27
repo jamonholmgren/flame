@@ -34,7 +34,7 @@ export async function handleFunctionCall(
 
     if (result.content) {
       print.info(``)
-      print.info(`${result.content}`)
+      print.info(print.colors.gray(`${result.content}`))
       print.info(``)
     }
 
