@@ -66,7 +66,7 @@ export async function createSmartContextBackchat(context: SmartContext): Promise
     const messages = context.messages.slice(-10, -1)
 
     for (const message of messages) {
-      if (message.role !== 'function' || message.function_call?.name === 'readFileAndReportBack') {
+      if (!message.function_call || message.function_call?.name !== 'readFileAndReportBack') {
         backchat.push(message)
         continue
       }
