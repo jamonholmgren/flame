@@ -13,7 +13,7 @@ import { generateProjectSummary } from '../utils/generateProjectSummary'
 
 // context holds the current state of the chat
 const context: SmartContext = {
-  workingFolder: '',
+  workingFolder: process.cwd(),
   project: '',
   currentTask: '',
   currentFile: '',
@@ -31,16 +31,14 @@ const command: GluegunCommand = {
   run: async (toolbox) => {
     const { print, parameters, prompt, filesystem } = toolbox
     const { colors } = print
-    const { gray, highlight } = colors
+    const { gray } = colors
 
     if (!checkOpenAIKey()) {
       print.info('')
       print.error(`Oops -- didn't find an OpenAI key.\n`)
       print.info(gray('Please export your OpenAI key as an environment variable.\n'))
       print.highlight('export OPENAI_API_KEY=key_goes_here\n')
-      print.info(
-        'You can obtain the key from the OpenAI website: https://platform.openai.com/account/api-keys'
-      )
+      print.info('Get the key here: https://platform.openai.com/account/api-keys')
       process.exit(1)
     }
 
@@ -70,7 +68,7 @@ const command: GluegunCommand = {
     // interactive loop
     while (true) {
       // update the existing files in the working folder
-      await listFiles('.', context)
+      await listFiles('.', context, { recursive: true, ignore: ['.git', 'node_modules'] })
 
       // let's generate a project summary if we don't have one yet
       if (!context.project) {
@@ -117,22 +115,6 @@ const command: GluegunCommand = {
           print.error(`Could not find ${fileName}.`)
         }
 
-        continue
-      }
-
-      // if the prompt starts with "ls ", list files in the prompt
-      if (result.chatMessage.startsWith('ls ')) {
-        const path = filesystem.path(result.chatMessage.slice(3))
-        const spinner = print.spin(`Listing ${path}...`)
-        const files = await listFiles(path, context)
-        spinner.succeed(`Listed ${path}.`)
-        context.messages.push({
-          content: `Files in ${path}:\n${files.join('\n')}`,
-          role: 'user',
-        })
-
-        // print that we loaded it
-        print.info(`Listed ${path}`)
         continue
       }
 

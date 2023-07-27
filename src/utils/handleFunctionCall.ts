@@ -22,7 +22,8 @@ export async function handleFunctionCall(
   const func = functions.find((f) => f.name === functionName)
 
   if (func) {
-    const fnSpinner = print.spin(`Running ${functionName}...`)
+    const fileArg = functionArgs.file ? ` (${functionArgs.file})` : ``
+    const fnSpinner = print.spin(`Running ${functionName}${fileArg}...`)
     const result = await func.fn(functionArgs, context)
 
     if (result.error) {

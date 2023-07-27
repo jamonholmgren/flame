@@ -41,3 +41,8 @@ export type SmartContext = {
   // Embeddings for the current task + last several messages
   currentTaskEmbeddings?: number[]
 }
+
+export type ListFilesOptions = {
+  recursive?: boolean
+  ignore?: string[]
+}

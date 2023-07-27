@@ -146,7 +146,7 @@ export const aiFunctions: ChatCompletionFunction[] = [
         },
         contents: {
           type: 'string',
-          description: 'The contents of the file to create.',
+          description: 'The text contents of the file to create.',
         },
         ...contextUpdaterFunctions,
       },
@@ -161,6 +161,7 @@ export const aiFunctions: ChatCompletionFunction[] = [
       }
 
       // Create the file
+      console.log(typeof args.contents)
       await filesystem.writeAsync(args.path, args.contents)
 
       content += `Created ${args.path}.`
