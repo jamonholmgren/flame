@@ -1,6 +1,5 @@
 import { filesystem, print } from 'gluegun'
 import { Message, SmartContext } from '../../types'
-import { cosineSimilarity } from '../../utils/cosignSimilarity'
 import { mostRelevantFiles } from '../../utils/mostRelevantFiles'
 
 const FILE_LENGTH_LIMIT = 2000 * 3 // characters * 3 = tokens (roughly)
@@ -9,18 +8,6 @@ const TOTAL_FILE_LENGTH_LIMIT = 4000 * 3 // characters * 3 = tokens (roughly)
 export async function createSmartContextBackchat(context: SmartContext): Promise<Message[]> {
   // This function will provide the backchat for the interactive.ts command,
   // carefully tuned for the current context.
-  // It will store both in the flame-history.json file that is created in the src/utils/chatHistory.ts functionality.
-  // It'll replace the ageMessages.ts functionality eventually.
-  // For now, we'll just return the previous messages
-  // return context.messages
-
-  // a good backchat will include:
-  // - what the project is all about
-  // - what the current task is
-  // - the most relevant file(s) to the current task
-  // - previous messages that are relevant to the current task
-  // - the current file
-  // - the most recent message
 
   const backchat: Message[] = []
 
@@ -34,31 +21,38 @@ export async function createSmartContextBackchat(context: SmartContext): Promise
     })
     smartContextDescription += 'project • '
   }
+  // let's fetch the most relevant files, using the embeddings
+  const relevantFiles = mostRelevantFiles(context, 0.7)
 
   // then we'll add a list of all the files we know about
   const paths = Object.keys(context.files)
   if (paths.length > 0) {
+    const pathsWithRelevancy = paths
+      .map((p) => {
+        const rel = Math.floor(relevantFiles.find((f) => f.file.path === p)?.similarity * 100)
+        if (!rel) return
+        return { content: `${p} (${rel}%)`, rel }
+      })
+      .filter((p) => p)
+      .sort((a, b) => b.rel - a.rel)
+      .map((p) => p.content)
+
     backchat.push({
-      content: `We know about these files and folders so far:\n${paths.join('\n')}`,
+      content: `These are the files that seem relevant to the current task (and % relevant):\n${pathsWithRelevancy.join(
+        '\n'
+      )}`,
       role: 'user',
     })
     smartContextDescription += `file list (${paths.length}) • `
   }
 
-  // then we'll add the current task
-  if (context.currentTask) {
-    backchat.push({
-      content: `The task we've been working on is: ${context.currentTask}\n(please update current task if not accurate)`,
-      role: 'user',
-    })
-
-    smartContextDescription += `current task • `
-  }
-
   let totalFileCharacterCount = 0
 
-  // let's fetch the most relevant files, using the embeddings
-  const relevantFiles = mostRelevantFiles(context, 0.8)
+  // let's add all the most relevant files up to the limit
+  const relevantFilesToUse = relevantFiles.filter((f) => {
+    totalFileCharacterCount += Math.min(f.file.length, FILE_LENGTH_LIMIT)
+    return totalFileCharacterCount < TOTAL_FILE_LENGTH_LIMIT
+  })
 
   // then we'll add the previous messages that are relevant to the current task
   if (context.messages.length > 1) {
@@ -66,16 +60,20 @@ export async function createSmartContextBackchat(context: SmartContext): Promise
     const messages = context.messages.slice(-10, -1)
 
     for (const message of messages) {
-      if (!message.function_call || message.function_call?.name !== 'readFileAndReportBack') {
-        backchat.push(message)
-        continue
-      }
+      backchat.push(message)
+
+      // if it's not a readFileAndReportBack function, we're done
+      const isReadFile =
+        message.role === 'assistant' && message.function_call?.name === 'readFileAndReportBack'
+      if (!isReadFile) continue
 
       // we have a file read function, so we'll add the file contents ... if relevant to the current task
       const filepath = JSON.parse(message.function_call.arguments).path
       const file = context.files[filepath]
-      // check if it's a relevant file (above 80%)
-      const relevantFile = relevantFiles.find((f) => f.file.path === filepath)
+
+      // check if it's one of the relevant files we have budget to show
+      const relevantFile = relevantFilesToUse.find((f) => f.file.path === filepath)
+
       if (file && relevantFile) {
         // if it's a relevant file, we'll add the contents
         const content = await filesystem.readAsync(filepath)
@@ -86,31 +84,30 @@ export async function createSmartContextBackchat(context: SmartContext): Promise
         })
 
         // can remove the file from the relevant files, since we've already added it
-        relevantFiles.splice(relevantFiles.indexOf(relevantFile), 1)
+        relevantFilesToUse.splice(relevantFilesToUse.indexOf(relevantFile), 1)
 
         // add the character count to the total
         totalFileCharacterCount += content.length
       } else {
         // if it's not a file we know about or not relevant, we'll just add the message
+        const rel = relevantFiles.find((f) => f.file.path === filepath)?.similarity
+
         backchat.push({
           role: 'function',
           name: 'readFileAndReportBack',
-          content: `(file contents omitted -- not relevant?)`,
+          content: `(file contents omitted -- ${
+            rel ? `not relevant enough (${rel})` : `not enough room`
+          })`,
         })
-
-        // add a bit of character count to the total
-        totalFileCharacterCount += 100
       }
     }
 
     smartContextDescription += `${messages.length + 1} previous messages • `
   }
 
-  if (relevantFiles.length > 0) {
-    // grab the most relevant files up to the token limit
-    // relevantFiles.slice(0, 3).forEach(({ file, similarity }) => {
-    // for version
-    for (let [i, { file, similarity }] of relevantFiles.slice(0, 10).entries()) {
+  if (relevantFilesToUse.length > 0) {
+    // show any other relevant files we have budget to show and which haven't been shown yet
+    for (let [i, { file, similarity }] of relevantFilesToUse.entries()) {
       let fileContent = await filesystem.readAsync(file.path)
 
       // truncate individual files if over FILE_LENGTH_LIMIT
@@ -118,35 +115,21 @@ export async function createSmartContextBackchat(context: SmartContext): Promise
         fileContent = `${fileContent.slice(0, FILE_LENGTH_LIMIT)}\n\n... (truncated)`
       }
 
-      // if the total file character count is already over the total limit, we'll just add the file path
-      if (totalFileCharacterCount > TOTAL_FILE_LENGTH_LIMIT) {
-        backchat.push({
-          role: 'user',
-          content: `The file ${
-            file.path.split('/').slice(-1)[0]
-          } might be relevant, but we're over the character count and it's ${
-            file.length
-          } characters long.`,
-        })
-      } else {
-        backchat.push({
-          role: 'assistant',
-          content: null,
-          function_call: {
-            name: 'readFileAndReportBack',
-            arguments: JSON.stringify({ path: file.path }),
-          },
-        })
-
-        backchat.push({
-          role: 'function',
+      backchat.push({
+        role: 'assistant',
+        content: null,
+        function_call: {
           name: 'readFileAndReportBack',
-          content: fileContent,
-        })
+          arguments: JSON.stringify({ path: file.path }),
+        },
+      })
 
-        // add the character count to the total
-        totalFileCharacterCount += fileContent.length
-      }
+      backchat.push({
+        role: 'function',
+        name: 'readFileAndReportBack',
+        content: fileContent,
+      })
+
       smartContextDescription += `${file.path.split('/').slice(-1)[0]} • `
     }
   }
@@ -160,6 +143,16 @@ export async function createSmartContextBackchat(context: SmartContext): Promise
     })
 
     smartContextDescription += `most recent message • `
+  }
+
+  // then we'll add the current task
+  if (context.currentTask) {
+    backchat.push({
+      content: `Just as context: the task we've been working on is: ${context.currentTask}\n(please help me update the current task description if this is not accurate based on context!)`,
+      role: 'user',
+    })
+
+    smartContextDescription += `current task • `
   }
 
   print.info(print.colors.gray(`\nSending: ${smartContextDescription}...\n`))

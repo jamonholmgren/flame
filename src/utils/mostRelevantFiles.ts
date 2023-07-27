@@ -3,7 +3,7 @@ import { cosineSimilarity } from './cosignSimilarity'
 
 export function mostRelevantFiles(context: SmartContext, minSimilarity = 0.8) {
   // if we don't have any files or the current task doesn't have embeddings...exit
-  if (Object.keys(context.files).length === 0 || context.currentTaskEmbeddings) return []
+  if (Object.values(context.files).length === 0 || !context.currentTaskEmbeddings) return []
 
   // otherwise, we'll check the cosine similarity of the current task embeddings
   const relevantFiles = Object.values(context.files)
@@ -19,5 +19,6 @@ export function mostRelevantFiles(context: SmartContext, minSimilarity = 0.8) {
     })
     .filter((a) => a.similarity > minSimilarity) // has to be > minSimilarity or we don't show it
     .sort((a, b) => b.similarity - a.similarity) // sorted by most similar first
+
   return relevantFiles
 }

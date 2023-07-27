@@ -5,7 +5,7 @@ export async function updateCurrentTaskEmbeddings(context: SmartContext) {
   const embedding = await createEmbedding(
     `${context.currentTask}\n\n${context.messages
       .filter((m) => m.role !== 'function' && m.content?.length > 0)
-      .slice(-5)
+      .slice(-3)
       .map((m) => m.content)
       .join('\n')}`
   )

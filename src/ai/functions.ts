@@ -188,14 +188,14 @@ export const aiFunctions: ChatCompletionFunction[] = [
     fn: async (args: { path: string } & ContextUpdaterArgs, context) => {
       let content = updateProjectAndTask(args, context)
 
-      // Read the file
-      const { file } = await loadFile(args.path, context)
+      // Make sure it exists
+      const fileExists = await filesystem.existsAsync(args.path)
 
-      if (!file) {
+      if (!fileExists) {
         return { error: `File '${args.path}' does not exist.` }
       }
 
-      // Since we now have the file and it is set as the current file, we can resubmit
+      // We resubmit; the file will be read in the next iteration
       return {
         content,
         resubmit: true,

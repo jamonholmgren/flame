@@ -188,15 +188,6 @@ const command: GluegunCommand = {
           break
         }
 
-        // add the response to the chat log
-        if (functionCallResponse.content) {
-          context.messages.push({
-            content: functionCallResponse.content,
-            role: 'function',
-            name: response.function_call.name,
-          })
-        }
-
         // if we don't have a resubmit, we're done with this loop
         if (!functionCallResponse.resubmit) break
       }
