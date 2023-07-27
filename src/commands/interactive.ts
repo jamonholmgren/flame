@@ -1,5 +1,5 @@
 import { GluegunCommand } from 'gluegun'
-import { chatGPTPrompt, createEmbedding } from '../ai/openai'
+import { chatGPTPrompt, createEmbedding, checkOpenAIKey } from '../ai/openai'
 import { createSmartContextBackchat } from '../ai/smart-context/smartContext'
 import { aiFunctions } from '../ai/functions'
 import { loadSmartContext, saveSmartContext } from '../ai/smart-context/persistSmartContext'
@@ -30,8 +30,22 @@ const command: GluegunCommand = {
   alias: ['i'],
   run: async (toolbox) => {
     const { print, parameters, prompt, filesystem } = toolbox
+    const { colors } = print
+    const { gray, highlight } = colors
 
-    print.info('Welcome to Flame CLI Interactive Mode! Type /help for a list of commands.')
+    if (!checkOpenAIKey()) {
+      print.info('')
+      print.error(`Oops -- didn't find an OpenAI key.\n`)
+      print.info(gray('Please export your OpenAI key as an environment variable.\n'))
+      print.highlight('export OPENAI_API_KEY=key_goes_here\n')
+      print.info(
+        'You can obtain the key from the OpenAI website: https://platform.openai.com/account/api-keys'
+      )
+      process.exit(1)
+    }
+
+    print.highlight('\nWelcome to Flame CLI Interactive Mode!\n')
+    print.info(gray('Type /help for a list of commands.\n'))
 
     // first parameter is the folder we want to work in
     context.workingFolder = parameters.first ? filesystem.path(parameters.first) : filesystem.cwd()
@@ -44,7 +58,10 @@ const command: GluegunCommand = {
       const spinner = print.spin('Loading chat history...')
       try {
         await loadSmartContext(context)
-        spinner.succeed('Chat history loaded.')
+        spinner.succeed('Chat history loaded.\n')
+
+        print.info(`Project description: ${gray(context.project)}\n`)
+        print.info(`Task: ${gray(context.currentTask)}\n`)
       } catch (error) {
         spinner.fail('Failed to load chat history.')
       }

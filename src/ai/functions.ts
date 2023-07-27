@@ -38,20 +38,24 @@ const contextUpdaterFunctions = {
 }
 
 const updateProjectAndTask = (args: ContextUpdaterArgs, context: SmartContext) => {
+  let result = ``
+
   if (args.newProjectDescription) {
     context.project = args.newProjectDescription
-    print.info(`Updated project description to: ${context.project}`)
+    result += `Updated project description to: ${context.project}\n`
   }
   if (args.newTaskDescription) {
     context.currentTask = args.newTaskDescription
-    print.info(`Updated task description to: ${context.currentTask}`)
+    result += `Updated task description to: ${context.currentTask}\n`
   }
+
+  return result
 }
 
 export const aiFunctions: ChatCompletionFunction[] = [
   {
     name: 'patchLines',
-    description: `Allows replacing or deleting a matching line in a given file (but can do multiple lines via multiple instructions). Only replaces one line or part of one line per instruction.`,
+    description: `Allows replacing or deleting a matching line in a given file (but can do multiple lines via multiple instructions). Generally speaking, avoid updating more than one code statement at a time. Ensure that your indentation is perfect or it won't work properly.`,
     parameters: {
       type: 'object',
       properties: {
@@ -67,7 +71,7 @@ export const aiFunctions: ChatCompletionFunction[] = [
               findLine: {
                 type: 'string',
                 description:
-                  'Look for this string in a line and replace that line with the insert string',
+                  'Look for this unique string in a line and replace that entire line with the insert string',
               },
               replaceLine: {
                 type: 'string',
@@ -89,7 +93,7 @@ export const aiFunctions: ChatCompletionFunction[] = [
     ) => {
       const { file, instructions } = args
 
-      updateProjectAndTask(args, context)
+      let content = updateProjectAndTask(args, context)
 
       // ensure that the path is not any higher than the working folder
       if (filesystem.path(file).startsWith(context.workingFolder) === false) {
@@ -98,6 +102,7 @@ export const aiFunctions: ChatCompletionFunction[] = [
 
       // construct a response
       let response = {
+        content,
         file,
         patches: [],
       }
@@ -148,7 +153,7 @@ export const aiFunctions: ChatCompletionFunction[] = [
       required: ['path', 'contents'],
     },
     fn: async (args: { path: string; contents: string } & ContextUpdaterArgs, context) => {
-      updateProjectAndTask(args, context)
+      let content = updateProjectAndTask(args, context)
 
       // ensure that the path is not any higher than the working folder
       if (filesystem.path(args.path).startsWith(context.workingFolder) === false) {
@@ -158,9 +163,9 @@ export const aiFunctions: ChatCompletionFunction[] = [
       // Create the file
       await filesystem.writeAsync(args.path, args.contents)
 
-      // print.info(`Created ${args.path}.`)
+      content += `Created ${args.path}.`
 
-      return { content: JSON.stringify({ path: args.path }) }
+      return { content }
     },
   },
   {
@@ -178,7 +183,7 @@ export const aiFunctions: ChatCompletionFunction[] = [
       required: ['path'],
     },
     fn: async (args: { path: string } & ContextUpdaterArgs, context) => {
-      updateProjectAndTask(args, context)
+      let content = updateProjectAndTask(args, context)
 
       // Read the file
       const file = await loadFile(args.path, context)
@@ -191,7 +196,7 @@ export const aiFunctions: ChatCompletionFunction[] = [
 
       // Since we now have the file and it is set as the current file, we can resubmit
       return {
-        content: undefined,
+        content,
         resubmit: true,
       }
     },
@@ -211,17 +216,17 @@ export const aiFunctions: ChatCompletionFunction[] = [
       required: ['path'],
     },
     fn: async (args: { path: string } & ContextUpdaterArgs, context) => {
-      updateProjectAndTask(args, context)
+      let content = updateProjectAndTask(args, context)
 
       // List the files
 
       const files = await listFiles(args.path, context)
 
-      // print.info(`Found ${files.length} at path: ${args.path}\n`)
+      content += `Found ${files.length} at path: ${args.path}\n`
 
       // Return the contents
       return {
-        content: JSON.stringify({ path: args.path, files }),
+        content,
         resubmit: true,
       }
     },
@@ -240,10 +245,10 @@ export const aiFunctions: ChatCompletionFunction[] = [
       args: { newSummary: string; newTaskDescription: string } & ContextUpdaterArgs,
       context
     ) => {
-      updateProjectAndTask(args, context)
+      let content = updateProjectAndTask(args, context)
 
       // We're done, wait for further instructions
-      return { content: undefined }
+      return { content }
     },
   },
 ]

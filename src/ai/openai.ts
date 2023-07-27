@@ -14,6 +14,11 @@ export async function openAI() {
   if (!_openAI) {
     let api_key = process.env.OPENAI_API_KEY
     if (!api_key) {
+      throw new Error(
+        'OpenAI API Key not found. Please set your OpenAI key as an environment variable. Refer to the README for instructions.'
+      )
+    }
+    if (!api_key) {
       console.log('Please enter your OpenAI API key:')
       api_key = await prompt('OpenAI API Key: ')
     }
@@ -74,4 +79,8 @@ export async function createEmbedding(text: string) {
   })
 
   return embeddingsResponse.data.data
+}
+
+export function checkOpenAIKey() {
+  return process.env.OPENAI_API_KEY !== undefined
 }

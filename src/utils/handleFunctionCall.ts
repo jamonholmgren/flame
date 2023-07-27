@@ -27,9 +27,17 @@ export async function handleFunctionCall(
 
     if (result.error) {
       fnSpinner.fail(`Error: ${result.error}`)
-    } else if (result.patches) {
-      fnSpinner.succeed(`${response.function_call.name} complete.`)
+      return result
+    }
+    fnSpinner.succeed(`${functionName} complete.`)
 
+    if (result.content) {
+      print.info(``)
+      print.info(`${result.content}`)
+      print.info(``)
+    }
+
+    if (result.patches) {
       print.success(`\nUpdated ${functionArgs.file} with these changes:\n`)
 
       result.patches.forEach((patch) => {
@@ -38,8 +46,6 @@ export async function handleFunctionCall(
       })
 
       print.info(``)
-    } else {
-      fnSpinner.succeed(`${functionName} complete.`)
     }
 
     return result
