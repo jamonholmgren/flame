@@ -4,13 +4,13 @@ import { loadFile } from './loadFile'
 
 export async function generateProjectSummary(context: SmartContext) {
   // load the README.md file if it exists
-  const readmeFile = await loadFile('README.md', context)
+  const { file, contents } = await loadFile('README.md', context)
 
-  if (readmeFile) {
+  if (file) {
     // Generate a summary using gpt-3.5-turbo
     const summary = await generateSummary(
       `Use the following README.md contents and file list to generate a summary of the project as few words as possible. Focus on things that are important for a coder to know about the project before they start working on it.`,
-      readmeFile.contents +
+      contents +
         `\n\nHere are all the files in the project:\n\n` +
         Object.keys(context.files).join('\n')
     )

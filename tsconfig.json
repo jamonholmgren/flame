@@ -12,7 +12,7 @@
     "inlineSourceMap": true,
     "outDir": "build",
     "strict": false,
-    "target": "es5",
+    "target": "es2015",
     "declaration": true,
     "declarationDir": "build/types"
   },

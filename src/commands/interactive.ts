@@ -1,5 +1,5 @@
 import { GluegunCommand } from 'gluegun'
-import { chatGPTPrompt, createEmbedding, checkOpenAIKey } from '../ai/openai'
+import { chatGPTPrompt, checkOpenAIKey } from '../ai/openai'
 import { createSmartContextBackchat } from '../ai/smart-context/smartContext'
 import { aiFunctions } from '../ai/functions'
 import { loadSmartContext, saveSmartContext } from '../ai/smart-context/persistSmartContext'
@@ -10,6 +10,8 @@ import { initialPrompt, statusPrompt } from '../utils/interactiveInitialPrompt'
 import { handleFunctionCall } from '../utils/handleFunctionCall'
 import { listFiles } from '../utils/listFiles'
 import { generateProjectSummary } from '../utils/generateProjectSummary'
+import { updateCurrentTaskEmbeddings } from '../utils/updateCurrentTaskEmbeddings'
+import { thinking } from '../utils/thinkingMessage'
 
 // context holds the current state of the chat
 const context: SmartContext = {
@@ -65,11 +67,27 @@ const command: GluegunCommand = {
       }
     }
 
+    // We need to look around and see what this project is all about
+    const fileLoaderSpinner = print.spin('Looking around project...')
+
+    // update the existing files in the working folder
+    await listFiles('.', context, { recursive: true, ignore: ['.git', 'node_modules'] })
+
+    // kick off an async loadFile for each file in the working folder
+    // this will load the file contents into memory so we can search them
+    // for relevant information
+    await Promise.allSettled(
+      Object.keys(context.files).map((fileName) => loadFile(fileName, context))
+    )
+    await saveSmartContext(context)
+    fileLoaderSpinner.succeed(
+      `Okay, I've looked through ${
+        Object.keys(context.files).length
+      } files and have some idea what they do.`
+    )
+
     // interactive loop
     while (true) {
-      // update the existing files in the working folder
-      await listFiles('.', context, { recursive: true, ignore: ['.git', 'node_modules'] })
-
       // let's generate a project summary if we don't have one yet
       if (!context.project) {
         const summarySpinner = print.spin('Generating project summary...')
@@ -77,7 +95,7 @@ const command: GluegunCommand = {
         await generateProjectSummary(context)
         context.messages.push({ content: context.project, role: 'user' })
         context.messages.push({
-          content: 'What else can you tell me about this project?',
+          content: 'What task are you looking to do today?',
           role: 'assistant',
         })
         summarySpinner.succeed('Project summary generated.')
@@ -85,7 +103,7 @@ const command: GluegunCommand = {
         print.info(``)
         print.info(`${context.project}`)
         print.info(``)
-        print.info(`What else can you tell me about this project?`)
+        print.info(`What task are you looking to do today?`)
       }
 
       // show an interactive prompt
@@ -107,10 +125,10 @@ const command: GluegunCommand = {
       // if the prompt starts with "load ", load a file into the prompt
       if (result.chatMessage.startsWith('/load ')) {
         const fileName = result.chatMessage.slice(5)
-        const file = await loadFile(fileName, context)
+        const { file } = await loadFile(fileName, context)
 
         if (file) {
-          print.info(`Loaded ${fileName} (${file.contents.length} characters)`)
+          print.info(`Loaded ${fileName} (${file.length} characters)`)
         } else {
           print.error(`Could not find ${fileName}.`)
         }
@@ -122,11 +140,8 @@ const command: GluegunCommand = {
       context.messages.push(newMessage)
       debugLog.push(newMessage)
 
-      // create a new embedding for the current task + last several messages so we can use it for finding relevant files
-      const embedding = await createEmbedding(
-        `${context.currentTask}\n\n${context.messages.slice(-5, -1).join('\n')}`
-      )
-      context.currentTaskEmbeddings = embedding[0].embedding
+      // we need to update the current task embeddings so we can find the right files
+      await updateCurrentTaskEmbeddings(context)
 
       // now let's kick off the AI loop
       for (let i = 0; i < 5; i++) {
@@ -134,7 +149,7 @@ const command: GluegunCommand = {
         // ageMessages(prevMessages, 12000)
         const backchat = await createSmartContextBackchat(context)
 
-        const spinner = print.spin('AI is thinking...')
+        const spinner = print.spin(thinking())
         const response = await chatGPTPrompt({
           functions: aiFunctions,
           messages: [initialPrompt, statusPrompt(context.workingFolder), ...backchat],

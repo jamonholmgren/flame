@@ -4,6 +4,12 @@ import { ChatCompletionRequestMessage } from 'openai'
 
 export type Message = ChatCompletionRequestMessage
 
+export type ProjectFile = {
+  path: string
+  embeddings?: number[]
+  length?: number
+}
+
 /**
  * Context includes tasks that we are working on, files that we have opened,
  * and previous messages that we have sent.
@@ -21,12 +27,7 @@ export type SmartContext = {
 
   // Files we have loaded
   files: {
-    [path: string]: {
-      path: string
-      contents?: string // if undefined, we haven't actually loaded it, but listed the filenames/paths
-      embeddings?: number[]
-      shortened?: string
-    }
+    [path: string]: ProjectFile
   }
 
   // Current file we are working on

@@ -161,7 +161,9 @@ export const aiFunctions: ChatCompletionFunction[] = [
       }
 
       // Create the file
+      console.log('POTENTIAL ERROR HERE START')
       console.log(typeof args.contents)
+      console.log('POTENTIAL ERROR HERE END')
       await filesystem.writeAsync(args.path, args.contents)
 
       content += `Created ${args.path}.`
@@ -187,13 +189,11 @@ export const aiFunctions: ChatCompletionFunction[] = [
       let content = updateProjectAndTask(args, context)
 
       // Read the file
-      const file = await loadFile(args.path, context)
+      const { file } = await loadFile(args.path, context)
 
-      if (!file || file.contents === undefined) {
+      if (!file) {
         return { error: `File '${args.path}' does not exist.` }
       }
-
-      // print.info(`Read ${args.path} (${file.contents.length} characters).`)
 
       // Since we now have the file and it is set as the current file, we can resubmit
       return {
@@ -229,7 +229,6 @@ export const aiFunctions: ChatCompletionFunction[] = [
         const filepath = `${args.path}/${file}`
         context.files[filepath] = {
           path: filepath,
-          contents: undefined,
         }
       }
 

@@ -46,7 +46,7 @@ export async function listFiles(
     // if we're going recursively, go list the files in the subdirectory
     if (recursive && filesystem.isDirectory(filePath)) {
       const subFiles = await listFiles(filePath, context, { recursive })
-      allFiles.push(...subFiles)
+      if (subFiles) allFiles.push(...subFiles)
     }
   }
 
