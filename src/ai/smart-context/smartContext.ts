@@ -2,8 +2,8 @@ import { filesystem, print } from 'gluegun'
 import { Message, SmartContext } from '../../types'
 import { mostRelevantFiles } from '../../utils/mostRelevantFiles'
 
-const FILE_LENGTH_LIMIT = 2000 * 3 // characters * 3 = tokens (roughly)
-const TOTAL_FILE_LENGTH_LIMIT = 4000 * 3 // characters * 3 = tokens (roughly)
+const FILE_LENGTH_LIMIT = 1000 * 3 // characters * 3 = tokens (roughly)
+const TOTAL_FILE_LENGTH_LIMIT = 5000 * 3 // characters * 3 = tokens (roughly)
 
 export async function createSmartContextBackchat(context: SmartContext): Promise<Message[]> {
   // This function will provide the backchat for the interactive.ts command,
@@ -77,6 +77,18 @@ export async function createSmartContextBackchat(context: SmartContext): Promise
       if (file && relevantFile) {
         // if it's a relevant file, we'll add the contents
         const content = await filesystem.readAsync(filepath)
+
+        // no file?
+        if (!content) {
+          // delete from relevant files
+          relevantFilesToUse.splice(relevantFilesToUse.indexOf(relevantFile), 1)
+
+          // remove it from the context too
+          delete context.files[filepath]
+
+          continue
+        }
+
         backchat.push({
           role: 'function',
           name: 'readFileAndReportBack',
@@ -134,6 +146,16 @@ export async function createSmartContextBackchat(context: SmartContext): Promise
     }
   }
 
+  // then we'll add the current task
+  if (context.currentTask) {
+    backchat.push({
+      content: `Just as context: the task we've been working on is: ${context.currentTask}\n(please help me update the current task description if this is not accurate based on context!)`,
+      role: 'user',
+    })
+
+    smartContextDescription += `current task • `
+  }
+
   // then we'll add the most recent message, which is most important
   if (context.messages.length > 0) {
     const messages = context.messages.slice(-1)
@@ -143,16 +165,6 @@ export async function createSmartContextBackchat(context: SmartContext): Promise
     })
 
     smartContextDescription += `most recent message • `
-  }
-
-  // then we'll add the current task
-  if (context.currentTask) {
-    backchat.push({
-      content: `Just as context: the task we've been working on is: ${context.currentTask}\n(please help me update the current task description if this is not accurate based on context!)`,
-      role: 'user',
-    })
-
-    smartContextDescription += `current task • `
   }
 
   print.info(print.colors.gray(`\nSending: ${smartContextDescription}...\n`))

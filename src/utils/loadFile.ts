@@ -21,7 +21,7 @@ export async function loadFile(
   const file: ProjectFile = { ...existingFile, path: fileName, length: contents.length }
   context.files[fileName] = file
 
-  // add it as the current file
+  // add it as the current file (last file read)
   context.currentFile = fileName
 
   // kick off fetching the embeddings for this file, if it's changed

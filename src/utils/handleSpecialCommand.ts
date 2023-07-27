@@ -1,6 +1,7 @@
 import { print } from 'gluegun'
 import { SmartContext } from '../types'
 import { createSmartContextBackchat } from '../ai/smart-context/smartContext'
+import { mostRelevantFiles } from './mostRelevantFiles'
 
 export async function handleSpecialCommand(
   command: string,
@@ -23,7 +24,8 @@ export async function handleSpecialCommand(
     } else if (command === '/context.task') {
       print.info(context.currentTask)
     } else if (command === '/context.files') {
-      print.info(context.files)
+      const relevantFiles = await mostRelevantFiles(context)
+      print.info(relevantFiles)
     } else if (command === '/context.messages') {
       print.info(context.messages)
     } else if (command === '/context.workingFolder') {
@@ -79,8 +81,10 @@ export async function handleSpecialCommand(
   }
 
   if (command === '/help') {
-    print.info('Available commands:\n/context: Show the current context\n/debug: Print the previous messages\n/log: Print the chat log\n/clear: Clear the chat log\n/clearlast: Clear the last message');
-    return true;
+    print.info(
+      'Available commands:\n/context: Show the current context\n/debug: Print the previous messages\n/log: Print the chat log\n/clear: Clear the chat log\n/clearlast: Clear the last message'
+    )
+    return true
   }
 
   return false

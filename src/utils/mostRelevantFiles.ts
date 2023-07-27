@@ -8,6 +8,9 @@ export function mostRelevantFiles(context: SmartContext, minSimilarity = 0.8) {
   // otherwise, we'll check the cosine similarity of the current task embeddings
   const relevantFiles = Object.values(context.files)
     .map((file) => {
+      // if it's the last file read, we'll pretend it's 100% relevant
+      if (file.path === context.currentFile) return { file, similarity: 1 }
+
       // check its relevancy
       if (file.embeddings) {
         // if it has embeddings, we'll check the cosine similarity

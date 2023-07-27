@@ -14,7 +14,7 @@ export async function listFiles(
   { recursive, ignore }: ListFilesOptions = { recursive: false, ignore: undefined }
 ) {
   // default ignore
-  ignore = ignore || ['node_modules, .git']
+  ignore = ignore || ['node_modules, .git', '.config']
 
   // list files
   const files = await filesystem.listAsync(context.workingFolder + '/' + path)
