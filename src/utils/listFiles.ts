@@ -1,22 +1,19 @@
 import { filesystem } from 'gluegun'
-import type { Message } from '../types'
+import type { SmartContext } from '../types'
 
-export async function listFiles(path: string) {
+export async function listFiles(path: string, context: SmartContext) {
   // list files
   const files = await filesystem.listAsync(path)
 
-  const message: Message = {
-    content: `
-Here's the contents of ${path}:
+  // if there are no files, return undefined
+  if (!files) return undefined
 
-\`\`\`
-${(files || []).join('\n')}
-\`\`\`
-`,
-    role: 'user',
-    age: 5,
-    importance: 'normal',
-  }
+  // add the files to the context if they don't already exist
+  files.forEach((file) => {
+    if (!context.files[file]) {
+      context.files[file] = { path: file }
+    }
+  })
 
-  return { message }
+  return files
 }
