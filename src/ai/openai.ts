@@ -26,6 +26,7 @@ export async function openAI() {
       new Configuration({
         apiKey: api_key,
         organization: 'org-wGbmhq3o3vYMbSrhmW6TA88N', // Jamon's personal org
+        // organization: "org-LJcL2W6sS6OZDEwkoA3ZnWGh", // Infinite Red
       })
     )
   }

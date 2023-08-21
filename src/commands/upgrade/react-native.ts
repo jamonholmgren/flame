@@ -205,6 +205,9 @@ const command: GluegunCommand = {
     // loop through each file and ask OpenAI to convert it using the diff for that file
     for (const file in files) {
       const fileDiff = files[file]
+        .replace(/RnDiffApp/g, appDisplayName)
+        .replace(/rndiffapp/g, appNameLowercase)
+        .replace('rn-diff-app', appNameKebabCase)
 
       // TODO: have the AI figure out which files need to be modified/renamed/etc
 
@@ -234,12 +237,9 @@ const command: GluegunCommand = {
         continue
       }
 
-      // our localFile replaces RNDiffApp at the beginning with "" using a regex
-      // and in the middle with our app display name
-      // and rndiffapp with our own name
+      // Replace the RnDiffApp placeholder with the app name
       const localFile = file
         .replace(/^RnDiffApp/, '.')
-        .replace(/RnDiffApp/g, appDisplayName)
         .replace(/RnDiffApp/g, appDisplayName)
         .replace(/rndiffapp/g, appNameLowercase)
         .replace('rn-diff-app', appNameKebabCase)
@@ -259,48 +259,6 @@ const command: GluegunCommand = {
         })
         continue
       }
-
-      //       // Now use OpenAI to convert the file
-      //       const diffPrompt = `
-      // Using this git diff of a typical ${file} in a React Native ${currentVersion} app being upgraded to ${targetVersion}:
-
-      // \`\`\`
-      // ${fileDiff}
-      // \`\`\`
-
-      // ... explain to me in bullet points what needs to be done to the file, assuming that the file we're
-      // applying it to might have customizations we would want to keep. Assume your audience is yourself,
-      // for a future chat session where you will not have any other context. Give specific instructions,
-      // not general instructions.
-
-      // Instead of "RnDiffApp" in your instructions, always use "${appDisplayName}".
-      //     `
-
-      //       // print.info(diffPrompt)
-
-      //       var instructions = await retryOnFail(() =>
-      //         chatGPTPrompt({
-      //           messages: [
-      //             {
-      //               content: diffPrompt,
-      //               role: 'system',
-      //             },
-      //           ],
-      //           model: 'gpt-3.5-turbo',
-      //         })
-      //       )
-
-      //       instructions = instructions.content
-
-      //       // make sure we got instructions
-      //       if (!instructions || instructions.startsWith('ERROR:')) {
-      //         print.error(`No instructions for ${localFile}.`)
-      //         fileSpinner.stopAndPersist({
-      //           symbol: '🙈',
-      //           text: `Skipping binary patch for ${file}`,
-      //         })
-      //         continue
-      //       }
 
       // now create a prompt for OpenAI to convert the file
       const orientation = `
@@ -328,7 +286,7 @@ Match the style of the existing code, including indentation, quotation style, sp
 `
 
       const admonishments = `
-      
+
 `
 
       try {
