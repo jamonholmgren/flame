@@ -1,6 +1,6 @@
 // export types
 
-import { ChatCompletionRequestMessage } from 'openai'
+import { ChatCompletionFunctions, ChatCompletionRequestMessage } from 'openai'
 
 export type Message = ChatCompletionRequestMessage
 
@@ -46,4 +46,12 @@ export type SmartContext = {
 export type ListFilesOptions = {
   recursive?: boolean
   ignore?: string[]
+}
+
+export type ChatCompletionFunctionResult = {
+  content?: string
+  error?: string
+}
+export type ChatCompletionFunction = ChatCompletionFunctions & {
+  fn: (args: any) => Promise<ChatCompletionFunctionResult>
 }

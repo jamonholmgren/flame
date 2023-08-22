@@ -55,7 +55,7 @@
   "prettier": {
     "semi": false,
     "singleQuote": true,
-    "printWidth": 100
+    "printWidth": 110
   },
   "husky": {
     "hooks": {
