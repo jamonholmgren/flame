@@ -51,6 +51,7 @@ export type ListFilesOptions = {
 export type ChatCompletionFunctionResult = {
   content?: string
   error?: string
+  undo?: () => Promise<void>
 }
 export type ChatCompletionFunction = ChatCompletionFunctions & {
   fn: (args: any) => Promise<ChatCompletionFunctionResult>

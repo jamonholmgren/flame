@@ -17,7 +17,7 @@ export function createUpgradeRNPrompts({ from, to, file, contents, diff }: Upgra
     from ${from} to ${to}.
   `
 
-  const prompt = `
+  const convertPrompt = `
     With this file located at ${file}:
 
     ${code(contents)}
@@ -35,11 +35,13 @@ export function createUpgradeRNPrompts({ from, to, file, contents, diff }: Upgra
     and line breaks.
           
     If no changes are needed, just say "None needed" and don't change the file.
+
+    Make sure to match the line very exactly or the patch won't work.
   `
 
   return {
     orientation,
-    prompt,
+    convertPrompt,
     admonishments,
   }
 }

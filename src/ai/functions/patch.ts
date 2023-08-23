@@ -32,6 +32,9 @@ export const patch: ChatCompletionFunction = {
   },
   fn: async (args) => {
     const { file, instructions } = args
+
+    let undos = []
+
     for (let instruction of instructions) {
       const { insert, replace } = instruction
 
@@ -42,6 +45,18 @@ export const patch: ChatCompletionFunction = {
 
       // Write the file
       await filesystem.writeAsync(file, patchedFileContents)
+
+      // Have an "undo" option which undoes all the patches one at a time
+      undos.unshift(async () => filesystem.writeAsync(file, fileContents))
+    }
+
+    return {
+      content: `Patched ${file}`,
+      undo: async () => {
+        for (let undo of undos) {
+          await undo()
+        }
+      },
     }
   },
 }

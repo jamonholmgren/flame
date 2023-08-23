@@ -4,7 +4,6 @@ import { parseGitDiff } from '../../utils/parseGitDiff'
 import { ChatCompletionFunction } from '../../types'
 import { patch } from '../../ai/functions/patch'
 import { createFile } from '../../ai/functions/createFile'
-import { handleFunctionCall } from '../../ai/functions/handleFunctionCall'
 import { createUpgradeRNPrompts } from '../../ai/prompts/upgradeReactNativePrompts'
 import { spin, done, stop, error } from '../../utils/spin'
 
@@ -17,8 +16,10 @@ const command: GluegunCommand = {
   name: 'react-native',
   alias: ['rn'],
   run: async (toolbox) => {
-    const { print, filesystem, http, parameters } = toolbox
+    const { print, filesystem, http, parameters, prompt } = toolbox
     const { options } = parameters
+
+    const log = (t: any) => options.debug && console.log(t)
 
     // Retrieve the path of the folder to upgrade, default current folder.
     const dir = parameters.first || './'
@@ -51,6 +52,7 @@ const command: GluegunCommand = {
     // if targetVersion and currentVersion are the same, we're already on the latest version
     if (targetVersion === currentVersion) {
       stop('🙂', `You're already on version ${currentVersion}.`)
+      print.info(`If you need to specify a particular version, use the --from and --to options.`)
       return
     }
 
@@ -85,6 +87,8 @@ const command: GluegunCommand = {
 
     spin('Converting files')
 
+    let userWantsToExit = false
+
     // loop through each file and ask OpenAI to convert it using the diff for that file
     for (const file in files) {
       const fileDiff = files[file]
@@ -118,9 +122,6 @@ const command: GluegunCommand = {
         .replace(/rndiffapp/g, appNameLowercase)
         .replace('rn-diff-app', appNameKebabCase)
 
-      // Restart the spinner for the next file
-      spin(`Converting ${localFile}`)
-
       // load the file from the filesystem
       const sourceFileContents = await filesystem.readAsync(localFile)
 
@@ -130,7 +131,7 @@ const command: GluegunCommand = {
         continue
       }
 
-      const { orientation, prompt, admonishments } = createUpgradeRNPrompts({
+      const { orientation, convertPrompt, admonishments } = createUpgradeRNPrompts({
         from: currentVersion,
         to: targetVersion,
         file: localFile,
@@ -138,29 +139,117 @@ const command: GluegunCommand = {
         diff: fileDiff,
       })
 
-      try {
-        // We'll let the AI patch files and create files
-        const functions: ChatCompletionFunction[] = [patch, createFile]
+      let userSatisfied = false
+      const additionalInstructions = []
+      while (!userSatisfied) {
+        try {
+          // Restart the spinner for the current file
+          spin(`Converting ${localFile}`)
 
-        const convertedObj = await chatGPTPrompt({
-          functions,
-          messages: [
-            { content: orientation, role: 'system' },
-            { content: prompt, role: 'user' },
-            { content: admonishments, role: 'system' },
-          ],
-          model: 'gpt-4',
-        })
+          // We'll let the AI patch files and create files
+          const functions: ChatCompletionFunction[] = [patch, createFile]
 
-        console.log({ convertedObj })
+          const response = await chatGPTPrompt({
+            functions,
+            messages: [
+              { content: orientation, role: 'system' },
+              { content: convertPrompt, role: 'user' },
+              ...additionalInstructions.map((i) => ({
+                content: `In addition: ${i}`,
+                role: 'user' as const,
+              })),
+              { content: admonishments, role: 'system' },
+            ],
+            model: 'gpt-4',
+          })
 
-        await handleFunctionCall(convertedObj, functions)
+          log({ response })
 
-        stop('✅', `Converted ${localFile}.`)
-      } catch (e) {
-        // catching any conversion errors
-        print.error(e.response.data)
+          if (!response.function_call) {
+            // If there's no function call, maybe there's content to display?
+            if (response.content) print.info(response.content)
+            continue
+          }
+
+          const functionName = response.function_call.name
+          const functionArgs = JSON.parse(response.function_call.arguments)
+
+          // Look up function in the registry and call it with the parsed arguments
+          const func = functions.find((f) => f.name === functionName)
+
+          // If there's no function, maybe there's content to display? Print the content and let them respond again
+          if (!func) {
+            if (response.content) print.info(response.content)
+            continue
+          }
+
+          const result = await func.fn(functionArgs)
+
+          log({ result })
+
+          done(`I've made changes to the file ${localFile}.`)
+
+          // interactive mode allows the user to undo the changes and give more instructions
+          if (options.interactive) {
+            print.info(`Go check your editor and see if you like the changes.`)
+
+            const keepChanges = await prompt.ask({
+              type: 'select',
+              name: 'keepChanges',
+              message: 'Keep changes?',
+              choices: [
+                { message: 'Looks good! Next file please', name: 'next' },
+                { message: 'Not quite right. undo changes and try again', name: 'retry' },
+                { message: 'Not quite right, undo changes and skip to the next file', name: 'skip' },
+                { message: 'Keep changes and exit', name: 'keepExit' },
+                { message: 'Undo changes and exit', name: 'undoExit' },
+              ],
+            })
+
+            log({ keepChanges })
+
+            if (keepChanges?.keepChanges === 'next') {
+              userSatisfied = true
+            } else if (keepChanges?.keepChanges === 'skip') {
+              userSatisfied = true
+              await result.undo()
+              print.info(`Changes to ${localFile} undone.`)
+            } else if (keepChanges?.keepChanges === 'keepExit') {
+              userSatisfied = true
+              userWantsToExit = true
+            } else if (keepChanges?.keepChanges === 'undoExit') {
+              userSatisfied = true
+              userWantsToExit = true
+              await result.undo()
+              print.info(`Changes to ${localFile} undone.`)
+            } else if (keepChanges?.keepChanges === 'retry') {
+              const nextInstructions = await prompt.ask({
+                type: 'input',
+                name: 'nextInstructions',
+                message: 'Any instructions to help me convert this file better?',
+              })
+
+              // undo the changes made so we can try again
+              await result.undo()
+              print.info(`Changes to ${localFile} undone.`)
+
+              additionalInstructions.push(nextInstructions.nextInstructions)
+            } else {
+              print.error(`Something went wrong.`)
+              log({ keepChanges })
+            }
+          }
+        } catch (e) {
+          // catching any conversion errors
+          print.error(e.response.data)
+        }
+
+        if (userSatisfied) {
+          stop('✅', `Converted ${localFile}.`)
+        }
       }
+
+      if (userWantsToExit) break
     }
 
     // Final success message
