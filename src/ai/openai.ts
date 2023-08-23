@@ -58,6 +58,21 @@ export const chatGPTPrompt = async ({
       user: process.env.USER,
     })
   } catch (e) {
+    // Check if it's a rate limit
+    if (e.response?.data?.error?.code === 'too_many_requests') {
+      return {
+        content: `ERROR: I'm sorry, I'm being rate limited. Please try again in a few minutes.\n\ncode: ${e.response?.data?.error?.code}\n`,
+        role: 'assistant',
+      } satisfies ChatCompletionResponseMessage
+    }
+    // Check if we went over the token limit
+    if (e.response?.data?.error?.code === 'context_length_exceeded') {
+      return {
+        content: `ERROR: I'm sorry, I went over the token limit. Please try again with a shorter prompt.\n\ncode: ${e.response?.data?.error?.code}\n`,
+        role: 'assistant',
+      } satisfies ChatCompletionResponseMessage
+    }
+
     console.log('---PROMPT---')
     console.dir(messages)
     console.log('---ERROR---')

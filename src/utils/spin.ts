@@ -4,11 +4,10 @@ let _spinner
 
 export function spin(text: string) {
   if (!_spinner) {
-    _spinner = print.spin(text)
-  } else {
-    _spinner.text = text
-    _spinner.start()
+    _spinner = print.spin(``)
   }
+  _spinner.text = ` ${text}`
+  _spinner.start()
 }
 
 export function done(text: string) {
@@ -24,4 +23,8 @@ export function stop(symbol: string, text: string) {
 
 export function error(text: string) {
   _spinner?.fail(text)
+}
+
+export function hide() {
+  _spinner?.stop()
 }
