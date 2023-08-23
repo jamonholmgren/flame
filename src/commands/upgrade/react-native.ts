@@ -221,7 +221,13 @@ const command: GluegunCommand = {
 
           log({ response })
 
-          if (!response.function_call) {
+          const functionName = response?.function_call?.name
+          const functionArgs = JSON.parse(response?.function_call?.arguments || '{}')
+
+          // Look up function in the registry and call it with the parsed arguments
+          const func = functionName && functions.find((f) => f.name === functionName)
+
+          if (!func) {
             // If there's no function call, maybe there's content to display?
             if (response.content) {
               print.info(response.content)
@@ -231,24 +237,11 @@ const command: GluegunCommand = {
                 print.error(`🛑 I'm being rate limited. Wait a while and try again.\n`)
                 await prompt.confirm('Press enter to continue')
               } else if (response.content.includes('context_length_exceeded')) {
-                print.error(
-                  `🛑 This file is too long (${sourceFileContents.length} characters), skipping! Not enough tokens to convert it.`
-                )
+                const len = sourceFileContents.length
+                print.error(`🛑 File is too long (${len} characters), skipping! Not enough tokens.`)
                 userSatisfied = true
               }
             }
-            continue
-          }
-
-          const functionName = response.function_call.name
-          const functionArgs = JSON.parse(response.function_call.arguments)
-
-          // Look up function in the registry and call it with the parsed arguments
-          const func = functions.find((f) => f.name === functionName)
-
-          // If there's no function, maybe there's content to display? Print the content and let them respond again
-          if (!func) {
-            if (response.content) print.info(response.content)
             continue
           }
 
@@ -304,6 +297,8 @@ const command: GluegunCommand = {
                 message: 'Prompt',
               })
 
+              br()
+
               // typing "exit" always gets out of the CLI
               if (nextInstructions?.nextInstructions === 'exit') {
                 userWantsToExit = true
@@ -323,7 +318,8 @@ const command: GluegunCommand = {
         } catch (e) {
           // catching any conversion errors
           br()
-          print.error(e.response.data)
+          log({ e })
+          print.error(e.response)
         }
       }
 
