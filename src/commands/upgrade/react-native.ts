@@ -61,6 +61,13 @@ const command: GluegunCommand = {
     const appDisplayName = appJson.displayName
     const appNameLowercase = appDisplayName.toLowerCase()
 
+    const replacePlaceholder = (name: string) =>
+      name
+        .replace(/^RnDiffApp/, '.')
+        .replace(/RnDiffApp/g, appDisplayName)
+        .replace(/rndiffapp/g, appNameLowercase)
+        .replace('rn-diff-app', appNameKebabCase)
+
     // if targetVersion and currentVersion are the same, we're already on the latest version
     if (targetVersion === currentVersion) {
       stop('🙂', `You're already on version ${currentVersion}.`)
@@ -111,10 +118,9 @@ const command: GluegunCommand = {
 
     // loop through each file and ask OpenAI to convert it using the diff for that file
     for (const file in files) {
-      const fileDiff = files[file]
-        .replace(/RnDiffApp/g, appDisplayName)
-        .replace(/rndiffapp/g, appNameLowercase)
-        .replace('rn-diff-app', appNameKebabCase)
+      const fileData = files[file]
+
+      const fileDiff = replacePlaceholder(fileData.diff)
 
       // TODO: have the AI figure out which files need to be modified/renamed/etc
 
@@ -123,12 +129,14 @@ const command: GluegunCommand = {
         // stop('🙈', `Skipping binary patch for ${file}`)
         print.info(`↠ Skipping: ${file} (binary file)`)
         br()
+        fileData.change = 'skipped'
         continue
       }
 
       if (ignoreFiles.find((v) => file.includes(v))) {
         print.info(`↠ Ignoring: ${file}`)
         br()
+        fileData.change = 'ignored'
         continue
       }
 
@@ -136,15 +144,12 @@ const command: GluegunCommand = {
       if (options.only && !file.includes(options.only)) {
         print.info(`↠ Skipping: ${file}`)
         br()
+        fileData.change = 'skipped'
         continue
       }
 
       // Replace the RnDiffApp placeholder with the app name
-      const localFile = file
-        .replace(/^RnDiffApp/, '.')
-        .replace(/RnDiffApp/g, appDisplayName)
-        .replace(/rndiffapp/g, appNameLowercase)
-        .replace('rn-diff-app', appNameKebabCase)
+      const localFile = replacePlaceholder(file)
 
       // load the file from the filesystem
       const sourceFileContents = await filesystem.readAsync(localFile)
@@ -154,6 +159,8 @@ const command: GluegunCommand = {
         // stop('🙈', `Couldn't find ${localFile}, skipping`)
         print.info(`↠ Skipping: ${localFile} (file not found)`)
         br()
+        fileData.change = 'skipped'
+        fileData.error = 'file not found'
         continue
       }
 
@@ -179,6 +186,7 @@ const command: GluegunCommand = {
       log({ skipFile })
 
       if (skipFile?.skipFile === 'skip') {
+        fileData.change = 'skipped'
         continue
       } else if (skipFile?.skipFile === 'exit') {
         userWantsToExit = true
@@ -194,132 +202,138 @@ const command: GluegunCommand = {
       })
 
       let userSatisfied = false
-      const additionalInstructions = []
       while (!userSatisfied) {
-        try {
-          // Restart the spinner for the current file
-          spin(`Upgrading ${localFile}`)
+        // Restart the spinner for the current file
+        spin(`Upgrading ${localFile}`)
 
-          // We'll let the AI patch files and create files
-          const functions: ChatCompletionFunction[] = [patch, createFile]
+        // We'll let the AI patch files and create files
+        const functions: ChatCompletionFunction[] = [patch, createFile]
 
-          const response = await chatGPTPrompt({
-            functions,
-            messages: [
-              { content: orientation, role: 'system' },
-              { content: convertPrompt, role: 'user' },
-              ...additionalInstructions.map((i) => ({
-                content: `In addition: ${i}`,
-                role: 'user' as const,
-              })),
-              { content: admonishments, role: 'system' },
+        const response = await chatGPTPrompt({
+          functions,
+          messages: [
+            { content: orientation, role: 'system' },
+            { content: convertPrompt, role: 'user' },
+            ...fileData.customPrompts.map((i) => ({
+              content: `In addition: ${i}`,
+              role: 'user' as const,
+            })),
+            { content: admonishments, role: 'system' },
+          ],
+          model: 'gpt-4',
+        })
+
+        hide()
+
+        log({ response })
+
+        const functionName = response?.function_call?.name
+        const functionArgs = JSON.parse(response?.function_call?.arguments || '{}')
+
+        // Look up function in the registry and call it with the parsed arguments
+        const func = functionName && functions.find((f) => f.name === functionName)
+
+        if (!func) {
+          // If there's no function call, maybe there's content to display?
+          if (response.content) {
+            print.info(response.content)
+
+            // if we're being rate limited, we need to stop for a bit and try again
+            if (response.content.includes('too_many_requests')) {
+              print.error(`🛑 I'm being rate limited. Wait a while and try again.\n`)
+              await prompt.confirm('Press enter to continue')
+            } else if (response.content.includes('context_length_exceeded')) {
+              const len = sourceFileContents.length
+              print.error(`🛑 File is too long (${len} characters), skipping! Not enough tokens.`)
+              fileData.change = 'skipped'
+              fileData.error = 'file too long'
+              userSatisfied = true // not really lol
+            }
+          }
+          continue
+        }
+
+        const result = await func.fn(functionArgs)
+
+        log({ result })
+
+        done(`I've made changes to the file ${localFile}.`)
+        br()
+
+        if (func.name === 'createFile') {
+          fileData.change = 'created'
+        } else if (func.name === 'patch') {
+          fileData.change = 'modified'
+        }
+
+        // interactive mode allows the user to undo the changes and give more instructions
+        if (options.interactive) {
+          const keepChanges = await prompt.ask({
+            type: 'select',
+            name: 'keepChanges',
+            message: 'Go check your editor and see if you like the changes.',
+            choices: [
+              { message: 'Looks good! Next file please', name: 'next' },
+              { message: 'Not quite right. undo changes and try again', name: 'retry' },
+              { message: 'Not quite right, undo changes and skip to the next file', name: 'skip' },
+              { message: 'Keep changes and exit', name: 'keepExit' },
+              { message: 'Undo changes and exit', name: 'undoExit' },
             ],
-            model: 'gpt-4',
           })
 
-          hide()
+          log({ keepChanges })
 
-          log({ response })
+          if (keepChanges?.keepChanges === 'next') {
+            userSatisfied = true
+          } else if (keepChanges?.keepChanges === 'skip') {
+            userSatisfied = true
+            await result.undo()
+            br()
+            print.info(`↺  Changes to ${localFile} undone.`)
+            fileData.change = 'skipped'
+          } else if (keepChanges?.keepChanges === 'keepExit') {
+            userSatisfied = true
+            userWantsToExit = true
+          } else if (keepChanges?.keepChanges === 'undoExit') {
+            userSatisfied = true
+            userWantsToExit = true
+            await result.undo()
+            br()
+            print.info(`↺  Changes to ${localFile} undone.`)
+            fileData.change = 'skipped'
+          } else if (keepChanges?.keepChanges === 'retry') {
+            br()
+            print.info('⇾ Any advice to help me convert this file better?')
+            br()
+            fileData.customPrompts.forEach((i) => print.info(gray(`   ${i}\n`)))
 
-          const functionName = response?.function_call?.name
-          const functionArgs = JSON.parse(response?.function_call?.arguments || '{}')
-
-          // Look up function in the registry and call it with the parsed arguments
-          const func = functionName && functions.find((f) => f.name === functionName)
-
-          if (!func) {
-            // If there's no function call, maybe there's content to display?
-            if (response.content) {
-              print.info(response.content)
-
-              // if we're being rate limited, we need to stop for a bit and try again
-              if (response.content.includes('too_many_requests')) {
-                print.error(`🛑 I'm being rate limited. Wait a while and try again.\n`)
-                await prompt.confirm('Press enter to continue')
-              } else if (response.content.includes('context_length_exceeded')) {
-                const len = sourceFileContents.length
-                print.error(`🛑 File is too long (${len} characters), skipping! Not enough tokens.`)
-                userSatisfied = true
-              }
-            }
-            continue
-          }
-
-          const result = await func.fn(functionArgs)
-
-          log({ result })
-
-          done(`I've made changes to the file ${localFile}.`)
-          br()
-
-          // interactive mode allows the user to undo the changes and give more instructions
-          if (options.interactive) {
-            const keepChanges = await prompt.ask({
-              type: 'select',
-              name: 'keepChanges',
-              message: 'Go check your editor and see if you like the changes.',
-              choices: [
-                { message: 'Looks good! Next file please', name: 'next' },
-                { message: 'Not quite right. undo changes and try again', name: 'retry' },
-                { message: 'Not quite right, undo changes and skip to the next file', name: 'skip' },
-                { message: 'Keep changes and exit', name: 'keepExit' },
-                { message: 'Undo changes and exit', name: 'undoExit' },
-              ],
+            const nextInstructions = await prompt.ask({
+              type: 'input',
+              name: 'nextInstructions',
+              message: 'Prompt',
             })
 
-            log({ keepChanges })
+            br()
 
-            if (keepChanges?.keepChanges === 'next') {
-              userSatisfied = true
-            } else if (keepChanges?.keepChanges === 'skip') {
-              userSatisfied = true
-              await result.undo()
-              br()
-              print.info(`↺  Changes to ${localFile} undone.`)
-            } else if (keepChanges?.keepChanges === 'keepExit') {
-              userSatisfied = true
+            // typing "exit" always gets out of the CLI
+            if (nextInstructions?.nextInstructions === 'exit') {
               userWantsToExit = true
-            } else if (keepChanges?.keepChanges === 'undoExit') {
-              userSatisfied = true
-              userWantsToExit = true
-              await result.undo()
-              br()
-              print.info(`↺  Changes to ${localFile} undone.`)
-            } else if (keepChanges?.keepChanges === 'retry') {
-              br()
-              print.info('⇾ Any instructions to help me convert this file better?')
-              br()
-              additionalInstructions.forEach((i) => print.info(gray(`   ${i}\n`)))
-
-              const nextInstructions = await prompt.ask({
-                type: 'input',
-                name: 'nextInstructions',
-                message: 'Prompt',
-              })
-
-              br()
-
-              // typing "exit" always gets out of the CLI
-              if (nextInstructions?.nextInstructions === 'exit') {
-                userWantsToExit = true
-                break
-              }
-
-              // undo the changes made so we can try again
-              await result.undo()
-
-              additionalInstructions.push(nextInstructions.nextInstructions)
-            } else {
-              br()
-              print.error(`Something went wrong.`)
-              log({ keepChanges })
+              break
             }
+
+            // undo the changes made so we can try again
+            await result.undo()
+
+            fileData.customPrompts.push(nextInstructions.nextInstructions)
+
+            fileData.change = 'pending'
+          } else {
+            br()
+            print.error(`Something went wrong.`)
+            log({ keepChanges })
+            fileData.change = 'pending'
+            fileData.error = 'something went wrong'
           }
-        } catch (e) {
-          // catching any conversion errors
-          br()
-          log({ e })
-          print.error(e.response)
         }
       }
 
@@ -329,7 +343,57 @@ const command: GluegunCommand = {
     }
 
     // Final success message
-    print.success('All files converted successfully!')
+    // print.success('All files converted successfully!')
+
+    // Print a summary of the changes
+    hr()
+    print.info(bold(white(`Summary\n`)))
+
+    const summary = Object.values(files)
+
+    const created = summary.filter((f) => f.change === 'created')
+    const modified = summary.filter((f) => f.change === 'modified')
+    const skipped = summary.filter((f) => f.change === 'skipped')
+    const ignored = summary.filter((f) => f.change === 'ignored')
+    const pending = summary.filter((f) => f.change === 'pending')
+    const errors = summary.filter((f) => f.error)
+
+    print.info(`Created: ${created.length}`)
+    created.forEach((f) => print.info(`   ${replacePlaceholder(f.path)}`))
+    br()
+
+    print.info(`Modified: ${modified.length}`)
+    modified.forEach((f) => print.info(`   ${replacePlaceholder(f.path)}`))
+    br()
+
+    print.info(`Skipped: ${skipped.length}`)
+    skipped.forEach((f) => print.info(`   ${replacePlaceholder(f.path)}`))
+    br()
+
+    print.info(`Ignored: ${ignored.length}`)
+    ignored.forEach((f) => print.info(`   ${replacePlaceholder(f.path)}`))
+    br()
+
+    print.info(`Pending: ${pending.length}`)
+    pending.forEach((f) => print.info(`   ${replacePlaceholder(f.path)}`))
+    br()
+
+    print.info(`Errors: ${errors.length}`)
+    errors.forEach((f) => print.info(`   ${replacePlaceholder(f.path)} (${f.error})`))
+
+    hr()
+
+    print.info(bold(white(`Custom prompts:`)))
+    summary.forEach((f) => {
+      if (f.customPrompts.length > 0) {
+        print.info(`   ${replacePlaceholder(f.path)}`)
+        // print the prompts
+        f.customPrompts.forEach((p) => print.info(gray(`      ${p}`)))
+      }
+    })
+
+    hr()
+    print.info(bold(white(`Done!\n`)))
   },
 }
 
