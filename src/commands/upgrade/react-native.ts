@@ -9,6 +9,7 @@ import { createUpgradeRNPrompts } from '../../ai/prompts/upgradeReactNativePromp
 import { spin, done, hide, stop, error } from '../../utils/spin'
 import { summarize } from '../../utils/summarize'
 import { checkGitStatus } from '../../utils/checkGitStatus'
+import { coloredDiff } from '../../utils/coloredDiff'
 
 const ignoreFiles = [
   'README.md',
@@ -38,6 +39,8 @@ const command: GluegunCommand = {
     // Fetch the versions from the --from and --to options, or default to auto
     let currentVersion = options.from || 'auto'
     let targetVersion = options.to || 'auto'
+
+    const seeDiffs = options.diffs !== false
 
     hr()
     print.info(
@@ -194,40 +197,19 @@ const command: GluegunCommand = {
       // check if the user wants to convert the next file or skip this file
       let skipFile = 'upgrade'
       if (options.interactive) {
-        while (true) {
-          var skipAnswer = await prompt.ask({
-            type: 'select',
-            name: 'skipFile',
-            message: 'Do you want to upgrade this file?',
-            choices: [
-              { message: `Start upgrading ${localFile}`, name: 'upgrade' },
-              { message: 'See the git diff', name: 'diff' },
-              { message: 'Skip this file', name: 'skip' },
-              { message: 'Exit', name: 'exit' },
-            ],
-          })
+        if (seeDiffs) print.info(white('Upgrade Helper diff:\n\n') + coloredDiff(fileDiff) + '\n')
 
-          if (skipAnswer?.skipFile === 'diff') {
-            br()
-            // color code the diff
-            const diffLines = fileDiff.split('\n')
-            diffLines.forEach((line) => {
-              if (['---', '+++', 'index'].includes(line.split(' ')[0])) {
-                // ignore
-              } else if (line.startsWith('+')) {
-                print.info(green(line))
-              } else if (line.startsWith('-')) {
-                print.info(red(line))
-              } else {
-                print.info(gray(line))
-              }
-            })
+        const skipAnswer = await prompt.ask({
+          type: 'select',
+          name: 'skipFile',
+          message: 'Do you want to upgrade this file?',
+          choices: [
+            { message: `Start upgrading ${localFile}`, name: 'upgrade' },
+            { message: 'Skip this file', name: 'skip' },
+            { message: 'Exit', name: 'exit' },
+          ],
+        })
 
-            br()
-            continue
-          }
-          break
-        }
         skipFile = skipAnswer['skipFile']
       }
 
@@ -341,19 +323,30 @@ const command: GluegunCommand = {
 
         // interactive mode allows the user to undo the changes and give more instructions
         if (options.interactive) {
+          if (seeDiffs) {
+            if (result.changes.split('\n').length === 0) {
+              print.info(`⇾ No changes made to file.`)
+            } else if (result.changes.split('\n').length <= 20) {
+              print.info(result.changes + '\n')
+            } else {
+              print.info(`⇾ Many changes made to file -- choose "See all changes" to see them.`)
+              print.info(`  Or check your code editor (probably easier)`)
+            }
+          }
+
           while (true) {
             var keepChanges = await prompt.ask({
               type: 'select',
               name: 'keepChanges',
-              message: 'Go check your editor and see if you like the changes.',
+              message: 'Review the changes and let me know what to do next!',
               choices: [
                 { message: 'Looks good! Next file please', name: 'next' },
-                { message: 'See changes', name: 'changes' },
-                { message: 'See original diff', name: 'diff' },
-                { message: 'Not quite right. undo changes and try again', name: 'retry' },
-                { message: 'Not quite right, undo changes and skip to the next file', name: 'skip' },
-                { message: 'Keep changes and exit', name: 'keepExit' },
-                { message: 'Undo changes and exit', name: 'undoExit' },
+                { message: 'Try again (and ask me for advice)', name: 'retry' },
+                { message: 'See all changes to file', name: 'changes' },
+                { message: 'See original diff again', name: 'diff' },
+                { message: 'Skip this file (undo changes)', name: 'skip' },
+                { message: 'Exit (keep changes to this file)', name: 'keepExit' },
+                { message: 'Exit (undo changes to this file)', name: 'undoExit' },
               ],
             })
 
