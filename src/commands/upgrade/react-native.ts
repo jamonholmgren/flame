@@ -22,10 +22,9 @@ const command: GluegunCommand = {
     const { gray, red, cyan, white, bold } = colors
 
     const log = (t: any) => options.debug && console.log(t)
-    const info = (label: string, content: string) =>
-      print.info(`🔥 ${gray(label.padEnd(8))} ${white(content)}`)
+    const info = (label: string, content: string) => print.info(`🔥 ${gray(label.padEnd(8))} ${white(content)}`)
     const br = () => print.info('')
-    const hr = () => print.info('\n===================================================\n')
+    const hr = () => print.info('\n' + '─'.repeat(51) + '\n')
 
     // Retrieve the path of the folder to upgrade, default current folder.
     const dir = parameters.first || './'
@@ -35,6 +34,16 @@ const command: GluegunCommand = {
     let targetVersion = options.to || 'auto'
 
     hr()
+    print.info(
+      red(`
+   🔥🔥🔥  
+   |  __| _🔥                      🔥_🔥   🔥🔥
+   | |_  | | 🔥__  🔥🔥   🔥_🔥     / \\   |_ _|  
+   | __| | |/ _\` || '  \\🔥/ -_)   🔥 _ \\   | |   
+   |_|   |_|\\__,_||_|_|_| \\___|   /_/ \\_\\ |___|         
+    `)
+    )
+
     print.info(`🔥 ${bold(red('Flame AI:'))} ${gray('Ignite your code with the power of AI.')}`)
     hr()
     info('App:', filesystem.path(dir))
@@ -228,7 +237,21 @@ const command: GluegunCommand = {
         log({ response })
 
         const functionName = response?.function_call?.name
-        const functionArgs = JSON.parse(response?.function_call?.arguments || '{}')
+        try {
+          var functionArgs = JSON.parse(response?.function_call?.arguments || '{}')
+        } catch (e) {
+          print.error(`🛑 Error parsing function arguments: ${e.message}`)
+          print.error(`   ${response?.function_call?.arguments}`)
+
+          const cont = await prompt.confirm('Try again?')
+          if (cont) continue
+
+          // skip this file
+          fileData.change = 'skipped'
+          fileData.error = 'unknown error'
+          userSatisfied = true // definitely not...
+          continue
+        }
 
         // Look up function in the registry and call it with the parsed arguments
         const func = functionName && functions.find((f) => f.name === functionName)
@@ -248,6 +271,11 @@ const command: GluegunCommand = {
               fileData.change = 'skipped'
               fileData.error = 'file too long'
               userSatisfied = true // not really lol
+            } else if (response.content.includes('unknown_error')) {
+              print.error(`🛑 Unknown error, skipping!`)
+              fileData.change = 'skipped'
+              fileData.error = 'unknown error'
+              userSatisfied = true // definitely not...
             }
           }
           continue
