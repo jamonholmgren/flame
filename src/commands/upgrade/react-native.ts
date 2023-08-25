@@ -8,7 +8,7 @@ import { deleteFile } from '../../ai/functions/deleteFile'
 import { createUpgradeRNPrompts } from '../../ai/prompts/upgradeReactNativePrompts'
 import { spin, done, hide, stop, error } from '../../utils/spin'
 import { summarize } from '../../utils/summarize'
-import { GluegunAskResponse } from 'gluegun/build/types/toolbox/prompt-types'
+import { checkGitStatus } from '../../utils/checkGitStatus'
 
 const ignoreFiles = [
   'README.md',
@@ -22,7 +22,7 @@ const command: GluegunCommand = {
     const { print, filesystem, http, parameters, prompt } = toolbox
     const { options } = parameters
     const { colors } = print
-    const { gray, red, cyan, white, bold } = colors
+    const { gray, red, cyan, white, bold, green } = colors
 
     const log = (t: any) => options.debug && console.log(t)
     const info = (label: string, content: string) => print.info(`🔥 ${gray(label.padEnd(8))} ${white(content)}`)
@@ -32,20 +32,8 @@ const command: GluegunCommand = {
     // Retrieve the path of the folder to upgrade, default current folder.
     const dir = parameters.first || './'
 
-    // Check if they have a git repo and a dirty working working tree, and warn
-    // them that they should commit their changes before upgrading.
-    // redirect errors to /dev/null
-    const gitStatus = await toolbox.system
-      .run('git status --porcelain', { trim: true, stderr: 'ignore' })
-      .catch(() => 'error')
-    if (gitStatus) {
-      if (gitStatus === 'error') {
-        print.warning("\n   Couldn't find a git repo. Please initialize one before upgrading.\n")
-      } else {
-        print.warning(`\n   You have uncommitted changes in your git repo. Please commit them before upgrading.\n`)
-      }
-      return
-    }
+    // Make sure the git repo is clean before we start (warn if not)
+    await checkGitStatus(toolbox)
 
     // Fetch the versions from the --from and --to options, or default to auto
     let currentVersion = options.from || 'auto'
@@ -71,6 +59,13 @@ const command: GluegunCommand = {
 
     // Load up the package.json file from the provided folder path
     const packageJson = await filesystem.readAsync(`${dir}/package.json`, 'json')
+
+    // If we can't find a package.json file, or there isn't a react-native dependency, stop
+    if (!packageJson || !packageJson.dependencies || !packageJson.dependencies['react-native']) {
+      stop('🙈', `Couldn't find a react-native dependency in package.json.`)
+      print.warning(`   Make sure you're in the right folder, or specify a folder to upgrade.\n`)
+      return
+    }
 
     // Get the current version from package.json if auto
     if (currentVersion === 'auto') currentVersion = packageJson.dependencies['react-native']
@@ -199,16 +194,40 @@ const command: GluegunCommand = {
       // check if the user wants to convert the next file or skip this file
       let skipFile = 'upgrade'
       if (options.interactive) {
-        const skipAnswer = await prompt.ask({
-          type: 'select',
-          name: 'skipFile',
-          message: 'Do you want to upgrade this file?',
-          choices: [
-            { message: `Start upgrading ${localFile}`, name: 'upgrade' },
-            { message: 'Skip this file', name: 'skip' },
-            { message: 'Exit', name: 'exit' },
-          ],
-        })
+        while (true) {
+          var skipAnswer = await prompt.ask({
+            type: 'select',
+            name: 'skipFile',
+            message: 'Do you want to upgrade this file?',
+            choices: [
+              { message: `Start upgrading ${localFile}`, name: 'upgrade' },
+              { message: 'See the git diff', name: 'diff' },
+              { message: 'Skip this file', name: 'skip' },
+              { message: 'Exit', name: 'exit' },
+            ],
+          })
+
+          if (skipAnswer?.skipFile === 'diff') {
+            br()
+            // color code the diff
+            const diffLines = fileDiff.split('\n')
+            diffLines.forEach((line) => {
+              if (['---', '+++', 'index'].includes(line.split(' ')[0])) {
+                // ignore
+              } else if (line.startsWith('+')) {
+                print.info(green(line))
+              } else if (line.startsWith('-')) {
+                print.info(red(line))
+              } else {
+                print.info(gray(line))
+              }
+            })
+
+            br()
+            continue
+          }
+          break
+        }
         skipFile = skipAnswer['skipFile']
       }
 
@@ -232,8 +251,8 @@ const command: GluegunCommand = {
         diff: fileDiff,
       })
 
-      let userSatisfied = false
-      while (!userSatisfied) {
+      let doneWithFile = false
+      while (!doneWithFile) {
         // Restart the spinner for the current file
         spin(`Upgrading ${localFile}`)
 
@@ -271,7 +290,7 @@ const command: GluegunCommand = {
           // skip this file
           fileData.change = 'skipped'
           fileData.error = 'unknown error'
-          userSatisfied = true // definitely not...
+          doneWithFile = true
           continue
         }
 
@@ -292,12 +311,12 @@ const command: GluegunCommand = {
               print.error(`🛑 File is too long (${len} characters), skipping! Not enough tokens.`)
               fileData.change = 'skipped'
               fileData.error = 'file too long'
-              userSatisfied = true // not really lol
+              doneWithFile = true
             } else if (response.content.includes('unknown_error')) {
               print.error(`🛑 Unknown error, skipping!`)
               fileData.change = 'skipped'
               fileData.error = 'unknown error'
-              userSatisfied = true // definitely not...
+              doneWithFile = true
             }
           }
           continue
@@ -306,6 +325,8 @@ const command: GluegunCommand = {
         const result = await func.fn(functionArgs)
 
         log({ result })
+
+        // fileData.changes = result.changes
 
         done(`I've made changes to the file ${localFile}.`)
         br()
@@ -320,34 +341,54 @@ const command: GluegunCommand = {
 
         // interactive mode allows the user to undo the changes and give more instructions
         if (options.interactive) {
-          const keepChanges = await prompt.ask({
-            type: 'select',
-            name: 'keepChanges',
-            message: 'Go check your editor and see if you like the changes.',
-            choices: [
-              { message: 'Looks good! Next file please', name: 'next' },
-              { message: 'Not quite right. undo changes and try again', name: 'retry' },
-              { message: 'Not quite right, undo changes and skip to the next file', name: 'skip' },
-              { message: 'Keep changes and exit', name: 'keepExit' },
-              { message: 'Undo changes and exit', name: 'undoExit' },
-            ],
-          })
+          while (true) {
+            var keepChanges = await prompt.ask({
+              type: 'select',
+              name: 'keepChanges',
+              message: 'Go check your editor and see if you like the changes.',
+              choices: [
+                { message: 'Looks good! Next file please', name: 'next' },
+                { message: 'See changes', name: 'changes' },
+                { message: 'See original diff', name: 'diff' },
+                { message: 'Not quite right. undo changes and try again', name: 'retry' },
+                { message: 'Not quite right, undo changes and skip to the next file', name: 'skip' },
+                { message: 'Keep changes and exit', name: 'keepExit' },
+                { message: 'Undo changes and exit', name: 'undoExit' },
+              ],
+            })
+
+            if (keepChanges?.keepChanges === 'changes') {
+              br()
+              print.info(result.changes)
+              br()
+              continue
+            }
+
+            if (keepChanges?.keepChanges === 'diff') {
+              br()
+              print.info(gray(fileData.diff))
+              br()
+              continue
+            }
+
+            break
+          }
 
           log({ keepChanges })
 
           if (keepChanges?.keepChanges === 'next') {
-            userSatisfied = true
+            doneWithFile = true
           } else if (keepChanges?.keepChanges === 'skip') {
-            userSatisfied = true
+            doneWithFile = true
             await result.undo()
             br()
             print.info(`↺  Changes to ${localFile} undone.`)
             fileData.change = 'skipped'
           } else if (keepChanges?.keepChanges === 'keepExit') {
-            userSatisfied = true
+            doneWithFile = true
             userWantsToExit = true
           } else if (keepChanges?.keepChanges === 'undoExit') {
-            userSatisfied = true
+            doneWithFile = true
             userWantsToExit = true
             await result.undo()
             br()

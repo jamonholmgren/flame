@@ -1,5 +1,6 @@
-import { filesystem } from 'gluegun'
+import { filesystem, print } from 'gluegun'
 import { ChatCompletionFunction } from '../../types'
+import { uglyDiff } from '../../utils/uglyDiff'
 
 export const patch: ChatCompletionFunction = {
   name: 'patch',
@@ -33,14 +34,22 @@ export const patch: ChatCompletionFunction = {
   fn: async (args) => {
     const { file, instructions } = args
 
-    let undos = []
+    const undos = []
+    const changes = []
 
     for (let instruction of instructions) {
-      const { insert, replace } = instruction
+      const { insert, replace }: { insert: string; replace: string } = instruction
 
       const fileContents = await filesystem.readAsync(file, 'utf8')
 
-      // Replace the string
+      const { diff, replaceIndex } = uglyDiff(file, fileContents, replace, insert)
+
+      // Then, add the ugly diff to the changes array at the replaceIndex location
+      // (yuck but it's so it's in order of line number, which is important for the changes)
+      // TODO: better way to sort...or is it just fine?
+      changes[replaceIndex] = diff
+
+      // Actually replace the string
       const patchedFileContents = fileContents.replace(replace, insert)
 
       // Write the file
@@ -57,6 +66,7 @@ export const patch: ChatCompletionFunction = {
           await undo()
         }
       },
+      changes: [...changes.filter((c) => c)].join('\n'),
     }
   },
 }

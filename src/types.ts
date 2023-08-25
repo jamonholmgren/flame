@@ -52,6 +52,7 @@ export type ChatCompletionFunctionResult = {
   content?: string
   error?: string
   undo?: () => Promise<void>
+  changes?: string
 }
 export type ChatCompletionFunction = ChatCompletionFunctions & {
   fn: (args: any) => Promise<ChatCompletionFunctionResult>

@@ -1,4 +1,4 @@
-import { filesystem } from 'gluegun'
+import { filesystem, print } from 'gluegun'
 import { ChatCompletionFunction } from '../../types'
 
 export const createFile: ChatCompletionFunction = {
@@ -23,6 +23,7 @@ export const createFile: ChatCompletionFunction = {
 
     return {
       content: `Created file ${args.path}`,
+      changes: print.colors.green(args.contents),
     }
   },
 }
