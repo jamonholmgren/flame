@@ -4,6 +4,7 @@ import { parseGitDiff } from '../../utils/parseGitDiff'
 import { ChatCompletionFunction } from '../../types'
 import { patch } from '../../ai/functions/patch'
 import { createFile } from '../../ai/functions/createFile'
+import { deleteFile } from '../../ai/functions/deleteFile'
 import { createUpgradeRNPrompts } from '../../ai/prompts/upgradeReactNativePrompts'
 import { spin, done, hide, stop, error } from '../../utils/spin'
 
@@ -216,7 +217,7 @@ const command: GluegunCommand = {
         spin(`Upgrading ${localFile}`)
 
         // We'll let the AI patch files and create files
-        const functions: ChatCompletionFunction[] = [patch, createFile]
+        const functions: ChatCompletionFunction[] = [patch, createFile, deleteFile]
 
         const response = await chatGPTPrompt({
           functions,
@@ -292,6 +293,8 @@ const command: GluegunCommand = {
           fileData.change = 'created'
         } else if (func.name === 'patch') {
           fileData.change = 'modified'
+        } else if (func.name === 'deleteFile') {
+          fileData.change = 'deleted'
         }
 
         // interactive mode allows the user to undo the changes and give more instructions
@@ -381,6 +384,7 @@ const command: GluegunCommand = {
 
     const created = summary.filter((f) => f.change === 'created')
     const modified = summary.filter((f) => f.change === 'modified')
+    const deleted = summary.filter((f) => f.change === 'deleted')
     const skipped = summary.filter((f) => f.change === 'skipped')
     const ignored = summary.filter((f) => f.change === 'ignored')
     const pending = summary.filter((f) => f.change === 'pending')
@@ -392,6 +396,10 @@ const command: GluegunCommand = {
 
     print.info(`Modified: ${modified.length}`)
     modified.forEach((f) => print.info(`   ${replacePlaceholder(f.path)}`))
+    br()
+
+    print.info(`Deleted: ${deleted.length}`)
+    deleted.forEach((f) => print.info(`   ${replacePlaceholder(f.path)}`))
     br()
 
     print.info(`Skipped: ${skipped.length}`)

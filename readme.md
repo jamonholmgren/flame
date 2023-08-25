@@ -5,7 +5,8 @@ Flame is our CLI for interacting with OpenAI and doing codemods and codegen. It 
 ```
 yarn
 yarn link
-export OPENAI_API_KEY=INSERTKEYHERE
+export OPENAI_API_KEY=sk-HERE
+export OPENAI_ORGANIZATION=org-HERE # optional
 flame --help
 ```
 
