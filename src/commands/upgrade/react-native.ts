@@ -7,6 +7,8 @@ import { createFile } from '../../ai/functions/createFile'
 import { deleteFile } from '../../ai/functions/deleteFile'
 import { createUpgradeRNPrompts } from '../../ai/prompts/upgradeReactNativePrompts'
 import { spin, done, hide, stop, error } from '../../utils/spin'
+import { summarize } from '../../utils/summarize'
+import { GluegunAskResponse } from 'gluegun/build/types/toolbox/prompt-types'
 
 const ignoreFiles = [
   'README.md',
@@ -29,6 +31,21 @@ const command: GluegunCommand = {
 
     // Retrieve the path of the folder to upgrade, default current folder.
     const dir = parameters.first || './'
+
+    // Check if they have a git repo and a dirty working working tree, and warn
+    // them that they should commit their changes before upgrading.
+    // redirect errors to /dev/null
+    const gitStatus = await toolbox.system
+      .run('git status --porcelain', { trim: true, stderr: 'ignore' })
+      .catch(() => 'error')
+    if (gitStatus) {
+      if (gitStatus === 'error') {
+        print.warning("\n   Couldn't find a git repo. Please initialize one before upgrading.\n")
+      } else {
+        print.warning(`\n   You have uncommitted changes in your git repo. Please commit them before upgrading.\n`)
+      }
+      return
+    }
 
     // Fetch the versions from the --from and --to options, or default to auto
     let currentVersion = options.from || 'auto'
@@ -180,25 +197,29 @@ const command: GluegunCommand = {
       br()
 
       // check if the user wants to convert the next file or skip this file
-      const skipFile = await prompt.ask({
-        type: 'select',
-        name: 'skipFile',
-        message: 'Do you want to upgrade this file?',
-        choices: [
-          { message: `Start upgrading ${localFile}`, name: 'upgrade' },
-          { message: 'Skip this file', name: 'skip' },
-          { message: 'Exit', name: 'exit' },
-        ],
-      })
+      let skipFile = 'upgrade'
+      if (options.interactive) {
+        const skipAnswer = await prompt.ask({
+          type: 'select',
+          name: 'skipFile',
+          message: 'Do you want to upgrade this file?',
+          choices: [
+            { message: `Start upgrading ${localFile}`, name: 'upgrade' },
+            { message: 'Skip this file', name: 'skip' },
+            { message: 'Exit', name: 'exit' },
+          ],
+        })
+        skipFile = skipAnswer['skipFile']
+      }
 
       br()
 
       log({ skipFile })
 
-      if (skipFile?.skipFile === 'skip') {
+      if (skipFile === 'skip') {
         fileData.change = 'skipped'
         continue
-      } else if (skipFile?.skipFile === 'exit') {
+      } else if (skipFile === 'exit') {
         userWantsToExit = true
         break
       } // else, we're good!
@@ -244,7 +265,7 @@ const command: GluegunCommand = {
           print.error(`🛑 Error parsing function arguments: ${e.message}`)
           print.error(`   ${response?.function_call?.arguments}`)
 
-          const cont = await prompt.confirm('Try again?')
+          const cont = options.interactive ? await prompt.confirm('Try again?') : false
           if (cont) continue
 
           // skip this file
@@ -373,60 +394,8 @@ const command: GluegunCommand = {
       if (userWantsToExit) break
     }
 
-    // Final success message
-    // print.success('All files converted successfully!')
-
     // Print a summary of the changes
-    hr()
-    print.info(bold(white(`Summary\n`)))
-
-    const summary = Object.values(files)
-
-    const created = summary.filter((f) => f.change === 'created')
-    const modified = summary.filter((f) => f.change === 'modified')
-    const deleted = summary.filter((f) => f.change === 'deleted')
-    const skipped = summary.filter((f) => f.change === 'skipped')
-    const ignored = summary.filter((f) => f.change === 'ignored')
-    const pending = summary.filter((f) => f.change === 'pending')
-    const errors = summary.filter((f) => f.error)
-
-    print.info(`Created: ${created.length}`)
-    created.forEach((f) => print.info(`   ${replacePlaceholder(f.path)}`))
-    br()
-
-    print.info(`Modified: ${modified.length}`)
-    modified.forEach((f) => print.info(`   ${replacePlaceholder(f.path)}`))
-    br()
-
-    print.info(`Deleted: ${deleted.length}`)
-    deleted.forEach((f) => print.info(`   ${replacePlaceholder(f.path)}`))
-    br()
-
-    print.info(`Skipped: ${skipped.length}`)
-    skipped.forEach((f) => print.info(`   ${replacePlaceholder(f.path)}`))
-    br()
-
-    print.info(`Ignored: ${ignored.length}`)
-    ignored.forEach((f) => print.info(`   ${replacePlaceholder(f.path)}`))
-    br()
-
-    print.info(`Pending: ${pending.length}`)
-    pending.forEach((f) => print.info(`   ${replacePlaceholder(f.path)}`))
-    br()
-
-    print.info(`Errors: ${errors.length}`)
-    errors.forEach((f) => print.info(`   ${replacePlaceholder(f.path)} (${f.error})`))
-
-    hr()
-
-    print.info(bold(white(`Custom prompts:`)))
-    summary.forEach((f) => {
-      if (f.customPrompts.length > 0) {
-        print.info(`   ${replacePlaceholder(f.path)}`)
-        // print the prompts
-        f.customPrompts.forEach((p) => print.info(gray(`      ${p}`)))
-      }
-    })
+    summarize(Object.values(files), print, replacePlaceholder, br, hr)
 
     hr()
     print.info(bold(white(`Done!\n`)))
