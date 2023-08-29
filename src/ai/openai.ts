@@ -30,9 +30,9 @@ export async function openAI() {
   return _openAI
 }
 
-type GPTResponse = Promise<ChatCompletionResponseMessage>
-
-export const chatGPTPrompt = async (options: Partial<CreateChatCompletionRequest>): GPTResponse => {
+export const chatGPTPrompt = async (
+  options: Partial<CreateChatCompletionRequest>
+): Promise<ChatCompletionResponseMessage> => {
   const ai = await openAI()
 
   const mergedOptions = {

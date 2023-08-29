@@ -33,6 +33,7 @@ export function createUpgradeRNPrompts({ from, to, file, contents, diff }: Upgra
     IMPORTANT NOTES:
     * If the existing file has modifications and the diff doesn't apply cleanly, then figure out how to apply the diff to the modified file.
     * Intelligently determine what needs to change to capture the spirit of the change.
+    * Bias toward keeping existing modifications to the existing code, except for things that are specifically called out as needing to be changed in the diff.
     * Match the style of the existing code, including indentation, quotation style, spacing,
     and line breaks.
     * Make sure to properly make changes to code comments as well.

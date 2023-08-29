@@ -10,6 +10,7 @@ import { spin, done, hide, stop, error } from '../../utils/spin'
 import { summarize } from '../../utils/summarize'
 import { checkGitStatus } from '../../utils/checkGitStatus'
 import { coloredDiff } from '../../utils/coloredDiff'
+import { ChatCompletionRequestMessage, ChatCompletionResponseMessage } from 'openai'
 
 const ignoreFiles = [
   'README.md',
@@ -241,19 +242,50 @@ const command: GluegunCommand = {
         // We'll let the AI patch files and create files
         const functions: ChatCompletionFunction[] = [patch, createFile, deleteFile]
 
-        const response = await chatGPTPrompt({
-          functions,
-          messages: [
-            { content: orientation, role: 'system' },
-            { content: convertPrompt, role: 'user' },
-            ...fileData.customPrompts.map((i) => ({
-              content: `In addition: ${i}`,
-              role: 'user' as const,
-            })),
-            { content: admonishments, role: 'system' },
-          ],
-          model: 'gpt-4',
-        })
+        const messages: ChatCompletionRequestMessage[] = [
+          { content: orientation, role: 'system' },
+          { content: convertPrompt, role: 'user' },
+          ...fileData.customPrompts.map((i) => ({
+            content: `In addition: ${i}`,
+            role: 'user' as const,
+          })),
+          { content: admonishments, role: 'system' },
+        ]
+
+        let response: ChatCompletionResponseMessage = undefined
+
+        if (options.cacheFile) {
+          const cacheFile = options.cacheFile
+          // load the existing cache file
+          const cacheData = await filesystem.readAsync(cacheFile, 'json')
+          // check if a recording for this request exists
+          if (cacheData?.request[localFile]) {
+            response = cacheData.request[localFile]
+          }
+        }
+
+        if (response) {
+          // delay briefly to simulate a real request
+          await new Promise((resolve) => setTimeout(resolve, 2500))
+          stop('🔥', `Using cached response for ${localFile}`)
+        } else {
+          response = await chatGPTPrompt({
+            functions,
+            messages,
+            model: 'gpt-4',
+          })
+
+          if (options.cacheFile) {
+            // load the existing cache file
+            const cacheData = (await filesystem.readAsync(options.cacheFile, 'json')) || { request: {} }
+
+            // add the request and response to the cache file
+            cacheData.request[localFile] = response
+
+            // write it back
+            await filesystem.writeAsync(options.cacheFile, cacheData, { jsonIndent: 2 })
+          }
+        }
 
         hide()
 
@@ -339,8 +371,9 @@ const command: GluegunCommand = {
           }
         }
 
+        let keepChanges: { keepChanges: string } = undefined
         while (true) {
-          var keepChanges = await prompt.ask({
+          keepChanges = await prompt.ask({
             type: 'select',
             name: 'keepChanges',
             message: 'Review the changes and let me know what to do next!',
@@ -349,11 +382,25 @@ const command: GluegunCommand = {
               { message: 'Try again (and ask me for advice)', name: 'retry' },
               { message: 'See all changes to file', name: 'changes' },
               { message: 'See original diff again', name: 'diff' },
+              ...(options.cacheFile ? [{ message: 'Remove cache for this file', name: 'removeCache' }] : []),
               { message: 'Skip this file (undo changes)', name: 'skip' },
               { message: 'Exit (keep changes to this file)', name: 'keepExit' },
               { message: 'Exit (undo changes to this file)', name: 'undoExit' },
             ],
           })
+
+          if (keepChanges?.keepChanges === 'removeCache') {
+            // load the existing cache file
+            const demoData = (await filesystem.readAsync(options.cacheFile, 'json')) || { request: {} }
+            // remove the request and response to the demo file
+            delete demoData.request[localFile]
+            // write it back
+            await filesystem.writeAsync(options.cacheFile, demoData, { jsonIndent: 2 })
+            br()
+            print.info(`↺  Cache removed for ${localFile}.`)
+            br()
+            continue
+          }
 
           if (keepChanges?.keepChanges === 'changes') {
             br()
@@ -418,6 +465,19 @@ const command: GluegunCommand = {
           fileData.customPrompts.push(nextInstructions.nextInstructions)
 
           fileData.change = 'pending'
+
+          // also remove the cache for this file
+          if (options.cacheFile) {
+            // load the existing cache file
+            const cacheData = (await filesystem.readAsync(options.cacheFile, 'json')) || { request: {} }
+            // remove the request and response to the cache file
+            delete cacheData.request[localFile]
+            // write it back
+            await filesystem.writeAsync(options.cacheFile, cacheData, { jsonIndent: 2 })
+            br()
+            print.info(`↺  Cache removed for ${localFile}.`)
+            br()
+          }
         } else {
           br()
           print.error(`Something went wrong.`)
