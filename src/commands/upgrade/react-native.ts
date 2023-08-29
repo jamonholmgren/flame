@@ -321,105 +321,109 @@ const command: GluegunCommand = {
           fileData.change = 'deleted'
         }
 
+        // if not interactive, just keep the changes and move on to the next file
+        if (!options.interactive) {
+          doneWithFile = true
+          continue
+        }
+
         // interactive mode allows the user to undo the changes and give more instructions
-        if (options.interactive) {
-          if (seeDiffs) {
-            if (result.changes.split('\n').length === 0) {
-              print.info(`⇾ No changes made to file.`)
-            } else if (result.changes.split('\n').length <= 20) {
-              print.info(result.changes + '\n')
-            } else {
-              print.info(`⇾ Many changes made to file -- choose "See all changes" to see them.`)
-              print.info(`  Or check your code editor (probably easier)`)
-            }
+        if (seeDiffs) {
+          if (result.changes.split('\n').length === 0) {
+            print.info(`⇾ No changes made to file.`)
+          } else if (result.changes.split('\n').length <= 20) {
+            print.info(result.changes + '\n')
+          } else {
+            print.info(`⇾ Many changes made to file -- choose "See all changes" to see them.`)
+            print.info(`  Or check your code editor (probably easier)`)
+          }
+        }
+
+        while (true) {
+          var keepChanges = await prompt.ask({
+            type: 'select',
+            name: 'keepChanges',
+            message: 'Review the changes and let me know what to do next!',
+            choices: [
+              { message: 'Looks good! Next file please', name: 'next' },
+              { message: 'Try again (and ask me for advice)', name: 'retry' },
+              { message: 'See all changes to file', name: 'changes' },
+              { message: 'See original diff again', name: 'diff' },
+              { message: 'Skip this file (undo changes)', name: 'skip' },
+              { message: 'Exit (keep changes to this file)', name: 'keepExit' },
+              { message: 'Exit (undo changes to this file)', name: 'undoExit' },
+            ],
+          })
+
+          if (keepChanges?.keepChanges === 'changes') {
+            br()
+            print.info(result.changes)
+            br()
+            continue
           }
 
-          while (true) {
-            var keepChanges = await prompt.ask({
-              type: 'select',
-              name: 'keepChanges',
-              message: 'Review the changes and let me know what to do next!',
-              choices: [
-                { message: 'Looks good! Next file please', name: 'next' },
-                { message: 'Try again (and ask me for advice)', name: 'retry' },
-                { message: 'See all changes to file', name: 'changes' },
-                { message: 'See original diff again', name: 'diff' },
-                { message: 'Skip this file (undo changes)', name: 'skip' },
-                { message: 'Exit (keep changes to this file)', name: 'keepExit' },
-                { message: 'Exit (undo changes to this file)', name: 'undoExit' },
-              ],
-            })
+          if (keepChanges?.keepChanges === 'diff') {
+            br()
+            print.info(gray(fileData.diff))
+            br()
+            continue
+          }
 
-            if (keepChanges?.keepChanges === 'changes') {
-              br()
-              print.info(result.changes)
-              br()
-              continue
-            }
+          break
+        }
 
-            if (keepChanges?.keepChanges === 'diff') {
-              br()
-              print.info(gray(fileData.diff))
-              br()
-              continue
-            }
+        log({ keepChanges })
 
+        if (keepChanges?.keepChanges === 'next') {
+          doneWithFile = true
+        } else if (keepChanges?.keepChanges === 'skip') {
+          doneWithFile = true
+          await result.undo()
+          br()
+          print.info(`↺  Changes to ${localFile} undone.`)
+          fileData.change = 'skipped'
+        } else if (keepChanges?.keepChanges === 'keepExit') {
+          doneWithFile = true
+          userWantsToExit = true
+        } else if (keepChanges?.keepChanges === 'undoExit') {
+          doneWithFile = true
+          userWantsToExit = true
+          await result.undo()
+          br()
+          print.info(`↺  Changes to ${localFile} undone.`)
+          fileData.change = 'skipped'
+        } else if (keepChanges?.keepChanges === 'retry') {
+          br()
+          print.info('⇾ Any advice to help me convert this file better?')
+          br()
+          fileData.customPrompts.forEach((i) => print.info(gray(`   ${i}\n`)))
+
+          const nextInstructions = await prompt.ask({
+            type: 'input',
+            name: 'nextInstructions',
+            message: 'Prompt',
+          })
+
+          br()
+
+          // typing "exit" always gets out of the CLI
+          if (nextInstructions?.nextInstructions === 'exit') {
+            userWantsToExit = true
             break
           }
 
+          // undo the changes made so we can try again
+          await result.undo()
+
+          fileData.customPrompts.push(nextInstructions.nextInstructions)
+
+          fileData.change = 'pending'
+        } else {
+          br()
+          print.error(`Something went wrong.`)
           log({ keepChanges })
-
-          if (keepChanges?.keepChanges === 'next') {
-            doneWithFile = true
-          } else if (keepChanges?.keepChanges === 'skip') {
-            doneWithFile = true
-            await result.undo()
-            br()
-            print.info(`↺  Changes to ${localFile} undone.`)
-            fileData.change = 'skipped'
-          } else if (keepChanges?.keepChanges === 'keepExit') {
-            doneWithFile = true
-            userWantsToExit = true
-          } else if (keepChanges?.keepChanges === 'undoExit') {
-            doneWithFile = true
-            userWantsToExit = true
-            await result.undo()
-            br()
-            print.info(`↺  Changes to ${localFile} undone.`)
-            fileData.change = 'skipped'
-          } else if (keepChanges?.keepChanges === 'retry') {
-            br()
-            print.info('⇾ Any advice to help me convert this file better?')
-            br()
-            fileData.customPrompts.forEach((i) => print.info(gray(`   ${i}\n`)))
-
-            const nextInstructions = await prompt.ask({
-              type: 'input',
-              name: 'nextInstructions',
-              message: 'Prompt',
-            })
-
-            br()
-
-            // typing "exit" always gets out of the CLI
-            if (nextInstructions?.nextInstructions === 'exit') {
-              userWantsToExit = true
-              break
-            }
-
-            // undo the changes made so we can try again
-            await result.undo()
-
-            fileData.customPrompts.push(nextInstructions.nextInstructions)
-
-            fileData.change = 'pending'
-          } else {
-            br()
-            print.error(`Something went wrong.`)
-            log({ keepChanges })
-            fileData.change = 'pending'
-            fileData.error = 'something went wrong'
-          }
+          fileData.change = 'pending'
+          fileData.error = 'something went wrong'
         }
       }
 

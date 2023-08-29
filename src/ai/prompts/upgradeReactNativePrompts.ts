@@ -25,18 +25,20 @@ export function createUpgradeRNPrompts({ from, to, file, contents, diff }: Upgra
     We have a diff to apply, but it was generated for a non-modified version of this file.
 
     ${code(diff)}
+
+    Apply the changes in the diff to the file.
   `
 
   const admonishments = `
-    Bias toward keeping existing modifications to the existing code, except for things that
-    are specifically called out as needing to be changed in the diff.
-
-    Match the style of the existing code, including indentation, quotation style, spacing,
+    IMPORTANT NOTES:
+    * If the existing file has modifications and the diff doesn't apply cleanly, then figure out how to apply the diff to the modified file.
+    * Intelligently determine what needs to change to capture the spirit of the change.
+    * Match the style of the existing code, including indentation, quotation style, spacing,
     and line breaks.
-          
-    If no changes are needed, just say "None needed" and don't change the file.
-
-    Make sure to match the line very exactly or the patch won't work.
+    * Make sure to properly make changes to code comments as well.
+    * Make sure to make all the changes in the diff that apply to this file.
+    * When a comment is marked as deleted in the diff, make sure to delete that comment in the file too.
+    * If no changes are needed, just say "None needed" and don't change the file.
   `
 
   return {

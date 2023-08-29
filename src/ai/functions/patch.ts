@@ -4,7 +4,7 @@ import { uglyDiff } from '../../utils/uglyDiff'
 
 export const patch: ChatCompletionFunction = {
   name: 'patch',
-  description: `Allows replacing or deleting the first matching string in a given file.`,
+  description: `Allows replacing the first matching string in a given file. Make sure to match indentation exactly.`,
   parameters: {
     type: 'object',
     properties: {
@@ -23,7 +23,7 @@ export const patch: ChatCompletionFunction = {
             },
             insert: {
               type: 'string',
-              description: 'Insert this string',
+              description: 'Insert this string at the location of the replace string',
             },
           },
         },
