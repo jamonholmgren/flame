@@ -1,8 +1,4 @@
-// export types
-
-import { ChatCompletionFunctions, ChatCompletionRequestMessage } from 'openai'
-
-export type Message = ChatCompletionRequestMessage
+import type { ChatCompletionFunctions, ChatCompletionRequestMessage } from 'openai'
 
 export type ProjectFile = {
   path: string
@@ -37,7 +33,7 @@ export type SmartContext = {
   currentTask?: string
 
   // Previous messages we have sent
-  messages: Message[]
+  messages: ChatCompletionRequestMessage[]
 
   // Embeddings for the current task + last several messages
   currentTaskEmbeddings?: number[]
@@ -53,9 +49,11 @@ export type ChatCompletionFunctionResult = {
   error?: string
   undo?: () => Promise<void>
   changes?: string
+  next?: 'resubmit' | 'skip' | 'done'
 }
+
 export type ChatCompletionFunction = ChatCompletionFunctions & {
-  fn: (args: any) => Promise<ChatCompletionFunctionResult>
+  fn: (args: unknown, context?: SmartContext) => Promise<ChatCompletionFunctionResult>
 }
 
 export type CLIOptions = {

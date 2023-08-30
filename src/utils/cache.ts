@@ -1,16 +1,12 @@
 import type { ChatCompletionResponseMessage } from 'openai'
 import { filesystem } from 'gluegun'
 
-export async function saveCachedResponse(
-  cacheFile: string,
-  cacheKey: string,
-  aiResponse: ChatCompletionResponseMessage
-) {
+export async function saveCachedResponse(cacheFile: string, cacheKey: string, response: ChatCompletionResponseMessage) {
   // load the existing cache file
   const cacheData = (await filesystem.readAsync(cacheFile, 'json')) || { request: {} }
 
   // add the request and response to the cache file
-  cacheData.request[cacheKey] = aiResponse
+  cacheData.request[cacheKey] = response
 
   // write it back
   await filesystem.writeAsync(cacheFile, cacheData, { jsonIndent: 2 })

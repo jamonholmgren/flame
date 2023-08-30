@@ -1,6 +1,8 @@
-import { filesystem, print } from 'gluegun'
+import { filesystem } from 'gluegun'
 import { ChatCompletionFunction } from '../../../types'
 import { uglyDiff } from '../../../utils/uglyDiff'
+
+type PatchInstruction = { insert: string; replace: string }
 
 export const patch: ChatCompletionFunction = {
   name: 'patch',
@@ -31,14 +33,14 @@ export const patch: ChatCompletionFunction = {
     },
     required: ['file', 'instructions'],
   },
-  fn: async (args) => {
+  fn: async (args: { file: string; instructions: PatchInstruction[] }) => {
     const { file, instructions } = args
 
     const undos = []
     const changes = []
 
     for (let instruction of instructions) {
-      const { insert, replace }: { insert: string; replace: string } = instruction
+      const { insert, replace } = instruction
 
       const fileContents = await filesystem.readAsync(file, 'utf8')
 

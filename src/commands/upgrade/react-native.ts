@@ -5,8 +5,8 @@ import { checkGitStatus } from '../../utils/checkGitStatus'
 import { fetchRNAppInfo } from '../../react-native/fetchRNAppInfo'
 import { br, flame, hr, info } from '../../utils/out'
 import { fetchRNDiff } from '../../react-native/fetchRNDiff'
-import { isFileIgnored } from '../../react-native/isFileIgnored'
-import { upgradeFile } from '../../react-native/upgradeFile'
+import { isFileIgnored } from '../../utils/isFileIgnored'
+import { upgradeFile } from '../../react-native/upgradeRNFile'
 import { CLIOptions } from '../../types'
 
 const ignoreFiles = [

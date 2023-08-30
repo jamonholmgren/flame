@@ -1,13 +1,9 @@
 import { print } from 'gluegun'
 import { SmartContext } from '../types'
-import { createSmartContextBackchat } from '../ai/smart-context/smartContext'
+import { createSmartContextBackchat } from './smartContext'
 import { mostRelevantFiles } from './mostRelevantFiles'
 
-export async function handleSpecialCommand(
-  command: string,
-  context: SmartContext,
-  debugLog: any[]
-) {
+export async function handleSpecialCommand(command: string, context: SmartContext, debugLog: any[]) {
   // if the prompt is empty, skip it and try again
   if (command.trim() === '') return true
 

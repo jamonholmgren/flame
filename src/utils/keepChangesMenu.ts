@@ -1,13 +1,11 @@
 import { print, prompt, filesystem } from 'gluegun'
 import type { FileData } from '../types'
 import type { ChatCompletionFunctionResult } from '../types'
-import { deleteCachedResponse } from '../utils/aiCache'
+import { deleteCachedResponse } from './cache'
 
 type KeepChangesOptions = {
   result: ChatCompletionFunctionResult
-  options: {
-    cacheFile?: string
-  }
+  options: { cacheFile?: string }
   fileData: FileData
 }
 
@@ -35,7 +33,7 @@ export async function keepChangesMenu({ result, fileData, options }: KeepChanges
     keepChanges = keepChangesQuestion.keepChanges as KeepChangesResult
 
     if (keepChanges === 'removeCache') {
-      await deleteCachedResponse(options.cacheFile, fileData)
+      await deleteCachedResponse(options.cacheFile, fileData.path)
       print.info(`\n↺  Cache removed for ${fileData.path}.\n`)
       continue
     }

@@ -1,18 +1,18 @@
 import type { FileData } from '../types'
 import type { CLIOptions, ChatCompletionFunction } from '../types'
-import type { ChatCompletionRequestMessage, ChatCompletionResponseMessage } from 'openai'
+import type { ChatCompletionRequestMessage } from 'openai'
 import { filesystem, prompt, print } from 'gluegun'
 import { hide, spin, stop, done } from '../utils/spin'
 import { br } from '../utils/out'
 import { coloredDiff } from '../utils/coloredDiff'
-import { createUpgradeRNPrompts } from '../ai/prompts/upgradeReactNativePrompts'
+import { createUpgradeRNPrompts } from '../prompts/upgradeReactNativePrompts'
 import { patch } from '../ai/openai/functions/patch'
 import { createFile } from '../ai/openai/functions/createFile'
 import { deleteFile } from '../ai/openai/functions/deleteFile'
 import { chatGPTPrompt } from '../ai/openai/openai'
-import { callFunction } from '../interactive/callFunction'
-import { keepChangesMenu } from '../interactive/keepChangesMenu'
-import { deleteCachedResponse, loadCachedResponse, saveCachedResponse } from '../utils/aiCache'
+import { callFunction } from '../utils/callFunction'
+import { keepChangesMenu } from '../utils/keepChangesMenu'
+import { deleteCachedResponse, loadCachedResponse, saveCachedResponse } from '../utils/cache'
 
 type UpgradeFileOptions = {
   fileData: FileData

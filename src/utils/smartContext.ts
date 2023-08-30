@@ -1,6 +1,6 @@
 import { filesystem, print } from 'gluegun'
-import { Message, SmartContext } from '../../types'
-import { mostRelevantFiles } from '../../utils/mostRelevantFiles'
+import { Message, SmartContext } from '../types'
+import { mostRelevantFiles } from './mostRelevantFiles'
 
 const FILE_LENGTH_LIMIT = 1000 * 3 // characters * 3 = tokens (roughly)
 const TOTAL_FILE_LENGTH_LIMIT = 5000 * 3 // characters * 3 = tokens (roughly)
@@ -63,8 +63,7 @@ export async function createSmartContextBackchat(context: SmartContext): Promise
       backchat.push(message)
 
       // if it's not a readFileAndReportBack function, we're done
-      const isReadFile =
-        message.role === 'assistant' && message.function_call?.name === 'readFileAndReportBack'
+      const isReadFile = message.role === 'assistant' && message.function_call?.name === 'readFileAndReportBack'
       if (!isReadFile) continue
 
       // we have a file read function, so we'll add the file contents ... if relevant to the current task
@@ -107,9 +106,7 @@ export async function createSmartContextBackchat(context: SmartContext): Promise
         backchat.push({
           role: 'function',
           name: 'readFileAndReportBack',
-          content: `(file contents omitted -- ${
-            rel ? `not relevant enough (${rel})` : `not enough room`
-          })`,
+          content: `(file contents omitted -- ${rel ? `not relevant enough (${rel})` : `not enough room`})`,
         })
       }
     }
