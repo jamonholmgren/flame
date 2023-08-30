@@ -27,8 +27,6 @@ export async function upgradeFile({
   const { bold, white, gray } = print.colors
   const log = (t: any) => options.debug && console.log(t)
 
-  const seeDiffs = options.diffs !== false
-
   // load the file from the filesystem
   const sourceFileContents = await filesystem.readAsync(fileData.path)
 
@@ -50,7 +48,7 @@ export async function upgradeFile({
   // check if the user wants to convert the next file or skip this file
   let skipFile = 'upgrade'
   if (options.interactive) {
-    if (seeDiffs) print.info(white('Upgrade Helper diff:\n\n') + coloredDiff(fileData.diff) + '\n')
+    print.info(white('Upgrade Helper diff:\n\n') + coloredDiff(fileData.diff) + '\n')
 
     const skipAnswer = await prompt.ask({
       type: 'select',
@@ -177,17 +175,15 @@ export async function upgradeFile({
     const result = fnResult.result
 
     // interactive mode allows the user to undo the changes and give more instructions
-    if (seeDiffs) {
-      if (result.changes.split('\n').length === 0) {
-        print.info(`⇾ No changes made to file.\n`)
-      } else if (result.changes.split('\n').length <= 20) {
-        print.info(result.changes + '\n')
-      } else {
-        print.info(`⇾ Many changes made to file -- choose "See all changes" to see them.`)
-        print.info(`  Or check your code editor (probably easier)\n`)
-      }
-      br()
+    if (result.changes.split('\n').length === 0) {
+      print.info(`⇾ No changes made to file.\n`)
+    } else if (result.changes.split('\n').length <= 20) {
+      print.info(result.changes + '\n')
+    } else {
+      print.info(`⇾ Many changes made to file -- choose "See all changes" to see them.`)
+      print.info(`  Or check your code editor (probably easier)\n`)
     }
+    br()
 
     const keepChanges = await keepChangesMenu({ result, fileData, options })
 
