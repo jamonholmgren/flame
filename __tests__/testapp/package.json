@@ -1,1 +1,6 @@
-{}
+{
+  "name": "flame-test",
+  "dependencies": {
+    "react-native": "0.72.3"
+  }
+}

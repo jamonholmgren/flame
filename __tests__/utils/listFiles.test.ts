@@ -19,9 +19,10 @@ describe('listFiles', () => {
 
     const result = await listFiles(testappPath, context, { recursive: false, ignore: [] })
 
-    expect(result).toEqual(['README.md', 'package.json', 'src/'])
+    expect(result).toEqual(['README.md', 'app.json', 'package.json', 'src/'])
     expect(context.files).toEqual({
       'README.md': { path: 'README.md' },
+      'app.json': { path: 'app.json' },
       'package.json': { path: 'package.json' },
       'src/': { path: 'src/' },
     })
@@ -32,10 +33,11 @@ describe('listFiles', () => {
 
     const result = await listFiles(testappPath, context, { recursive: true, ignore: [] })
 
-    expect(result).toEqual(['README.md', 'package.json', 'src/', 'src/app.mjs'])
+    expect(result).toEqual(['README.md', 'app.json', 'package.json', 'src/', 'src/app.mjs'])
     expect(context.files).toEqual({
       'README.md': { path: 'README.md' },
       'package.json': { path: 'package.json' },
+      'app.json': { path: 'app.json' },
       'src/': { path: 'src/' },
       'src/app.mjs': { path: 'src/app.mjs' },
     })

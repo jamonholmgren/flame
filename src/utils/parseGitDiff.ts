@@ -8,7 +8,30 @@ type FileDiff = {
 
 type ParseDiffResult = { [path: string]: FileDiff }
 
-// parse out all the files that were changed in the diff, returning an array of file paths and names
+/**
+ * Parses a git diff into an object with the files that changed
+ * and the diff for each file, along with some other metadata.
+ *
+ * Example return object:
+ *
+ * {
+ *  'ios/AppDelegate.mm': {
+ *    path: 'ios/AppDelegate.mm',
+ *    diff: '...',
+ *    change: 'pending',
+ *    error: undefined,
+ *    customPrompts: [],
+ *  },
+ *  'android/app/src/main/java/com/rndiffapp/MainActivity.java': {
+ *    path: 'android/app/src/main/java/com/rndiffapp/MainActivity.java',
+ *    diff: '...',
+ *    change: 'pending',
+ *    error: undefined,
+ *    customPrompts: [],
+ *  },
+ *  ...
+ * }
+ */
 export function parseGitDiff(diffString: string): ParseDiffResult {
   const files: ParseDiffResult = {}
   let currentFile = null
@@ -32,6 +55,15 @@ export function parseGitDiff(diffString: string): ParseDiffResult {
       }
     } else if (line.startsWith('@@')) {
       // Skip the @@ line, as it contains the line numbers
+      i++
+    } else if (line.startsWith('index')) {
+      // skip the index
+      i++
+    } else if (line.startsWith('---')) {
+      // skip the --- line
+      i++
+    } else if (line.startsWith('+++')) {
+      // skip the +++ line
       i++
     } else if (currentFile !== null) {
       files[currentFile].diff += line + '\n'

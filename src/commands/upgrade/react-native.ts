@@ -11,8 +11,9 @@ import { summarize } from '../../utils/summarize'
 import { checkGitStatus } from '../../utils/checkGitStatus'
 import { coloredDiff } from '../../utils/coloredDiff'
 import { ChatCompletionRequestMessage, ChatCompletionResponseMessage } from 'openai'
-import { fetchRNAppInfo } from '../../utils/fetchRNAppInfo'
+import { fetchRNAppInfo } from '../../react-native/fetchRNAppInfo'
 import { br, flame, hr, info } from '../../utils/out'
+import { fetchRNDiff } from '../../react-native/fetchRNDiff'
 
 const ignoreFiles = [
   'README.md',
@@ -62,26 +63,15 @@ const command: GluegunCommand = {
     // fetch the React Native Upgrade Helper diff
     spin('Fetching upgrade diff')
 
-    // format: https://raw.githubusercontent.com/react-native-community/rn-diff-purge/diffs/diffs/0.70.5..0.71.4.diff
-    const baseURL = `https://raw.githubusercontent.com`
-    const diffPath = `/react-native-community/rn-diff-purge/diffs/diffs/${currentVersion}..${targetVersion}.diff`
-    const diffResponse = await http.create({ baseURL }).get(diffPath)
-    const diff = diffResponse.data as string | null
+    const result = await fetchRNDiff({ currentVersion, targetVersion })
 
-    // if the diff is null, we don't have a diff for this
-    if (!diff) {
-      error(`\n   We don't have a diff for upgrading from ${currentVersion} to ${targetVersion}.\n`)
-      print.info(`   URL: ${baseURL + diffPath}`)
-      return
-    }
+    // if there's an error, stop
+    if (result.error) return stop('🙈', result.error)
+
+    const { files } = result
 
     // done('Diff fetched from ' + baseURL + diffPath)
     hide()
-
-    info('Diff:', baseURL + diffPath)
-
-    // pull the files that changed from the git diff
-    const files = parseGitDiff(diff)
 
     // if they pass --list, just list the files and exit
     if (options.list) {
