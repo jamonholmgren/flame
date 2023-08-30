@@ -1,5 +1,5 @@
 import { filesystem, print } from 'gluegun'
-import { ChatCompletionFunction } from '../../types'
+import { ChatCompletionFunction } from '../../../types'
 
 export const createFile: ChatCompletionFunction = {
   name: 'createFile',

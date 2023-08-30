@@ -5,7 +5,7 @@ import {
   CreateChatCompletionResponse,
   OpenAIApi,
 } from 'openai'
-import { prompt } from '../utils/prompt'
+import { prompt } from '../../utils/prompt'
 import { AxiosResponse } from 'axios'
 
 let _openAI: OpenAIApi | null = null

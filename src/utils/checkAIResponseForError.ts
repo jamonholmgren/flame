@@ -1,5 +1,5 @@
 import { print, prompt } from 'gluegun'
-import type { FileData } from './parseGitDiff'
+import type { FileData } from '../types'
 import type { ChatCompletionResponseMessage } from 'openai'
 
 type CheckAIResponseForErrorOptions = {

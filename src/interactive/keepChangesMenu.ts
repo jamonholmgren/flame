@@ -1,5 +1,5 @@
 import { print, prompt, filesystem } from 'gluegun'
-import type { FileData } from '../utils/parseGitDiff'
+import type { FileData } from '../types'
 import type { ChatCompletionFunctionResult } from '../types'
 import { deleteCachedResponse } from '../utils/aiCache'
 

@@ -1,4 +1,4 @@
-import { chatGPTPrompt } from '../ai/openai'
+import { chatGPTPrompt } from '../ai/openai/openai'
 
 /**
  * Generates a summary of the given text using gpt-3.5-turbo.

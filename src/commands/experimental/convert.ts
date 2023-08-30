@@ -1,7 +1,28 @@
+/**
+ * This is an experimental Flame command that uses OpenAI's API to convert code
+ * from one thing to another; whether it's a new version or an alternative library
+ * or whatever.
+ *
+ * It needs some TLC; there are some new features in the OpenAI API (specifically,
+ * function calling) that would make it much more efficient. (See the "upgrade react-native"
+ * command as an example of using function calling.)
+ *
+ * Additionally, this would be much more useful with gpt-4-32k, which I currently do not
+ * have access to. Bummer.
+ *
+ * Usage:
+ *
+ * 1. Make sure you have an OPENAI_API_KEY in your environment
+ * 2. Make sure there's a recipe for the conversion you want to do in src/recipes
+ * 3. Run `flame convert <from> <to> <sourceFile>`
+ *
+ * e.g. `flame convert ava jest src/index.js`
+ *
+ */
 import { GluegunCommand } from 'gluegun'
-import { openAI } from '../ai/openai'
+import { openAI } from '../../ai/openai/openai'
 import { ChatCompletionRequestMessage } from 'openai'
-import { chunkByLines } from '../utils/chunkByLines'
+import { chunkByLines } from '../../utils/chunkByLines'
 
 // type for recipes
 type Recipe = {
@@ -26,9 +47,7 @@ const command: GluegunCommand = {
     const sourceFile = parameters.third
 
     // get lineChunks parameter
-    const lineChunks = parameters.options.lineChunks
-      ? parameters.options.lineChunks.split(',').map(Number)
-      : undefined
+    const lineChunks = parameters.options.lineChunks ? parameters.options.lineChunks.split(',').map(Number) : undefined
 
     // show a spinner
     print.info(`\nConverting ${sourceFile} from ${from} to ${to}\n`)
@@ -47,7 +66,7 @@ const command: GluegunCommand = {
     // ensure there's a recipe for this conversion
     let recipe: Recipe
     try {
-      const recipeExport = require(`../recipes/convert/${from}-to-${to}`) as { recipe: Recipe }
+      const recipeExport = require(`../recipes/${from}-to-${to}`) as { recipe: Recipe }
       recipe = recipeExport.recipe
     } catch (e) {
       print.error(`No recipe found for converting from ${from} to ${to}`)
@@ -80,9 +99,7 @@ const command: GluegunCommand = {
             .map((_, idx) => 1000 * idx)
         }
 
-        chunks = chunkByLines(sourceFileContents, splitArray).filter(
-          (chunk) => chunk.trim().length > 0
-        )
+        chunks = chunkByLines(sourceFileContents, splitArray).filter((chunk) => chunk.trim().length > 0)
       }
     }
 
@@ -96,9 +113,7 @@ const command: GluegunCommand = {
       let chunk = chunks[i]
 
       // Update spinner text to show progress for chunks
-      spinner.text = `AI conversion of ${sourceFile} from ${from} to ${to} (${i + 1} of ${
-        chunks.length
-      })`
+      spinner.text = `AI conversion of ${sourceFile} from ${from} to ${to} (${i + 1} of ${chunks.length})`
 
       const messages: ChatCompletionRequestMessage[] = [
         {
@@ -122,6 +137,7 @@ const command: GluegunCommand = {
           messages,
           // max_tokens: 3000,
           // temperature: 0,
+          // functions, // TODO: important
           user: process.env.USER,
         })
       } catch (e) {
@@ -140,12 +156,11 @@ const command: GluegunCommand = {
       spinner.text = `Writing updated code to ${sourceFile}`
       spinner.start()
 
+      // TODO: implement function calling!
       const chunkRevampedCodeMessage = response.data.choices[0].message.content
 
       // strip any line that starts and ends with backticks
-      const chunkRevampedCode = chunkRevampedCodeMessage
-        .replace(/^```.*\n/gm, '')
-        .replace(/```.*\n$/gm, '')
+      const chunkRevampedCode = chunkRevampedCodeMessage.replace(/^```.*\n/gm, '').replace(/```.*\n$/gm, '')
 
       // concatenate the revamped chunk to the output code
       revampedCode += chunkRevampedCode + '\n'

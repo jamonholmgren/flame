@@ -1,6 +1,6 @@
 import { filesystem } from 'gluegun'
 import type { ProjectFile, SmartContext } from '../types'
-import { createEmbedding } from '../ai/openai'
+import { createEmbedding } from '../ai/openai/openai'
 
 export async function loadFile(
   fileName: string,

@@ -1,6 +1,6 @@
 import { filesystem, print } from 'gluegun'
-import { ChatCompletionFunction } from '../../types'
-import { uglyDiff } from '../../utils/uglyDiff'
+import { ChatCompletionFunction } from '../../../types'
+import { uglyDiff } from '../../../utils/uglyDiff'
 
 export const patch: ChatCompletionFunction = {
   name: 'patch',

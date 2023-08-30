@@ -1,10 +1,4 @@
-export type FileData = {
-  path: string
-  diff: string
-  change: 'pending' | 'created' | 'modified' | 'deleted' | 'skipped' | 'ignored'
-  error?: string
-  customPrompts: string[]
-}
+import type { FileData } from '../types'
 
 type ParseDiffResult = FileData[]
 
@@ -39,10 +33,7 @@ export function parseGitDiff(diffString: string): ParseDiffResult {
   for (let i = 1; i < fileDiffs.length; i++) {
     // Starting at 1 to skip the initial empty string
     const fileDiff = fileDiffs[i]
-
-    if (fileDiffs[i].includes('GIT binary patch\n')) {
-      continue
-    }
+    if (fileDiffs[i].includes('GIT binary patch\n')) continue
 
     const lines = fileDiff.split('\n')
 

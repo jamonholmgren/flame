@@ -1,7 +1,7 @@
 import { print, prompt } from 'gluegun'
 import { ChatCompletionResponseMessage } from 'openai'
 import { ChatCompletionFunction } from '../types'
-import type { FileData } from '../utils/parseGitDiff'
+import type { FileData } from '../types'
 
 type CallFunctionOptions = {
   functionName: string

@@ -1,4 +1,4 @@
-import type { FileData } from '../utils/parseGitDiff'
+import type { FileData } from '../types'
 import type { CLIOptions, ChatCompletionFunction } from '../types'
 import type { ChatCompletionRequestMessage, ChatCompletionResponseMessage } from 'openai'
 import { filesystem, prompt, print } from 'gluegun'
@@ -6,10 +6,10 @@ import { hide, spin, stop, done } from '../utils/spin'
 import { br } from '../utils/out'
 import { coloredDiff } from '../utils/coloredDiff'
 import { createUpgradeRNPrompts } from '../ai/prompts/upgradeReactNativePrompts'
-import { patch } from '../ai/functions/patch'
-import { createFile } from '../ai/functions/createFile'
-import { deleteFile } from '../ai/functions/deleteFile'
-import { chatGPTPrompt } from '../ai/openai'
+import { patch } from '../ai/openai/functions/patch'
+import { createFile } from '../ai/openai/functions/createFile'
+import { deleteFile } from '../ai/openai/functions/deleteFile'
+import { chatGPTPrompt } from '../ai/openai/openai'
 import { callFunction } from '../interactive/callFunction'
 import { keepChangesMenu } from '../interactive/keepChangesMenu'
 import { deleteCachedResponse, loadCachedResponse, saveCachedResponse } from '../utils/aiCache'
@@ -98,7 +98,7 @@ export async function upgradeFile({ fileData, options, currentVersion, targetVer
       { content: admonishments, role: 'system' },
     ]
 
-    let aiResponse = options.cacheFile ? await loadCachedResponse(options.cacheFile, fileData) : undefined
+    let aiResponse = options.cacheFile ? await loadCachedResponse(options.cacheFile, fileData.path) : undefined
 
     if (aiResponse) {
       // delay briefly to simulate a real request
@@ -107,7 +107,7 @@ export async function upgradeFile({ fileData, options, currentVersion, targetVer
     } else {
       aiResponse = await chatGPTPrompt({ functions, messages, model: 'gpt-4' })
 
-      if (options.cacheFile) await saveCachedResponse(options.cacheFile, fileData, aiResponse)
+      if (options.cacheFile) await saveCachedResponse(options.cacheFile, fileData.path, aiResponse)
     }
 
     hide()
@@ -194,7 +194,7 @@ export async function upgradeFile({ fileData, options, currentVersion, targetVer
       fileData.customPrompts.push(nextInstructions)
       fileData.change = 'pending'
 
-      if (options.cacheFile) await deleteCachedResponse(options.cacheFile, fileData)
+      if (options.cacheFile) await deleteCachedResponse(options.cacheFile, fileData.path)
     } else {
       // This really should never happen
       br()

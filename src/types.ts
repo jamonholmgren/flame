@@ -67,3 +67,11 @@ export type CLIOptions = {
   from?: string
   to?: string
 }
+
+export type FileData = {
+  path: string
+  diff: string
+  change: 'pending' | 'created' | 'modified' | 'deleted' | 'skipped' | 'ignored'
+  error?: string
+  customPrompts: string[]
+}
