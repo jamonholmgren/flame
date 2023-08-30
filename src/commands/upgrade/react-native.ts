@@ -11,6 +11,8 @@ import { summarize } from '../../utils/summarize'
 import { checkGitStatus } from '../../utils/checkGitStatus'
 import { coloredDiff } from '../../utils/coloredDiff'
 import { ChatCompletionRequestMessage, ChatCompletionResponseMessage } from 'openai'
+import { fetchRNAppInfo } from '../../utils/fetchRNAppInfo'
+import { br, flame, hr, info } from '../../utils/out'
 
 const ignoreFiles = [
   'README.md',
@@ -24,12 +26,9 @@ const command: GluegunCommand = {
     const { print, filesystem, http, parameters, prompt } = toolbox
     const { options } = parameters
     const { colors } = print
-    const { gray, red, cyan, white, bold, green } = colors
+    const { gray, red, cyan, white, bold } = colors
 
     const log = (t: any) => options.debug && console.log(t)
-    const info = (label: string, content: string) => print.info(`🔥 ${gray(label.padEnd(8))} ${white(content)}`)
-    const br = () => print.info('')
-    const hr = () => print.info('\n' + '─'.repeat(51) + '\n')
 
     // Retrieve the path of the folder to upgrade, default current folder.
     const dir = parameters.first || './'
@@ -37,71 +36,24 @@ const command: GluegunCommand = {
     // Make sure the git repo is clean before we start (warn if not)
     await checkGitStatus(toolbox)
 
-    // Fetch the versions from the --from and --to options, or default to auto
-    let currentVersion = options.from || 'auto'
-    let targetVersion = options.to || 'auto'
-
     const seeDiffs = options.diffs !== false
 
     hr()
-    print.info(
-      red(`
-   🔥🔥🔥  
-   |  __| _🔥                      🔥_🔥   🔥🔥
-   | |_  | | 🔥__  🔥🔥   🔥_🔥     / \\   |_ _|  
-   | __| | |/ _\` || '  \\🔥/ -_)   🔥 _ \\   | |   
-   |_|   |_|\\__,_||_|_|_| \\___|   /_/ \\_\\ |___|         
-    `)
-    )
+    flame()
 
     print.info(`🔥 ${bold(red('Flame AI:'))} ${gray('Ignite your code with the power of AI.')}`)
     hr()
     info('App:', filesystem.path(dir))
     info('Mode:', options.interactive ? `Interactive` : `Upgrade`)
 
-    spin('Fetching app info')
+    // fetch all the app info from package.json and app.json
+    const appInfo = await fetchRNAppInfo({ dir, options })
 
-    // Load up the package.json file from the provided folder path
-    const packageJson = await filesystem.readAsync(`${dir}/package.json`, 'json')
+    // if there's an error, stop
+    if (appInfo.error) return stop('🙈', appInfo.error)
 
-    // If we can't find a package.json file, or there isn't a react-native dependency, stop
-    if (!packageJson || !packageJson.dependencies || !packageJson.dependencies['react-native']) {
-      stop('🙈', `Couldn't find a react-native dependency in package.json.`)
-      print.warning(`   Make sure you're in the right folder, or specify a folder to upgrade.\n`)
-      return
-    }
+    const { currentVersion, targetVersion, replacePlaceholder } = appInfo
 
-    // Get the current version from package.json if auto
-    if (currentVersion === 'auto') currentVersion = packageJson.dependencies['react-native']
-
-    // Get the target version from npm if auto
-    if (targetVersion === 'auto') {
-      const npmResponse = await http.create({ baseURL: 'https://registry.npmjs.org' }).get(`/react-native`)
-      const npmPackageJson = npmResponse.data as { 'dist-tags': { latest: string } }
-      targetVersion = npmPackageJson['dist-tags'].latest
-    }
-
-    const appJson = await filesystem.readAsync(`${dir}/app.json`, 'json')
-
-    const appNameKebabCase = packageJson.name
-    const appDisplayName = appJson.displayName
-    const appNameLowercase = appDisplayName.toLowerCase()
-
-    const replacePlaceholder = (name: string) =>
-      name
-        .replace(/^RnDiffApp/, '.')
-        .replace(/RnDiffApp/g, appDisplayName)
-        .replace(/rndiffapp/g, appNameLowercase)
-        .replace('rn-diff-app', appNameKebabCase)
-
-    // if targetVersion and currentVersion are the same, we're already on the latest version
-    if (targetVersion === currentVersion) {
-      stop('🙂', `You're already on version ${currentVersion}.`)
-      print.info(`   If you need to specify a particular version, use the --from and --to options.`)
-      return
-    }
-
-    // done('Versions fetched: ' + currentVersion + ' -> ' + targetVersion)
     hide()
 
     info('Current:', bold(currentVersion))

@@ -2,7 +2,6 @@ import { filesystem, print } from 'gluegun'
 import { ChatCompletionFunctions } from 'openai'
 import { listFiles } from '../utils/listFiles'
 import { SmartContext } from '../types'
-import { loadFile } from '../utils/loadFile'
 
 type ChatCompletionFunction = ChatCompletionFunctions & {
   fn: (
@@ -249,10 +248,7 @@ export const aiFunctions: ChatCompletionFunction[] = [
         ...contextUpdaterFunctions,
       },
     },
-    fn: async (
-      args: { newSummary: string; newTaskDescription: string } & ContextUpdaterArgs,
-      context
-    ) => {
+    fn: async (args: { newSummary: string; newTaskDescription: string } & ContextUpdaterArgs, context) => {
       let content = updateProjectAndTask(args, context)
 
       // We're done, wait for further instructions
