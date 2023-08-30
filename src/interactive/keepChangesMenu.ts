@@ -1,6 +1,7 @@
 import { print, prompt, filesystem } from 'gluegun'
 import type { FileData } from '../utils/parseGitDiff'
 import type { ChatCompletionFunctionResult } from '../types'
+import { deleteCachedResponse } from '../utils/aiCache'
 
 type KeepChangesOptions = {
   result: ChatCompletionFunctionResult
@@ -20,26 +21,21 @@ export async function keepChangesMenu({ result, fileData, options }: KeepChanges
       name: 'keepChanges',
       message: 'Review the changes and let me know what to do next!',
       choices: [
-        { message: 'Looks good! Next file please', name: 'next' },
-        { message: 'Try again (and ask me for advice)', name: 'retry' },
-        { message: 'See all changes to file', name: 'changes' },
-        { message: 'See original diff again', name: 'diff' },
-        ...(options.cacheFile ? [{ message: 'Remove cache for this file', name: 'removeCache' }] : []),
-        { message: 'Skip this file (undo changes)', name: 'skip' },
-        { message: 'Exit (keep changes to this file)', name: 'keepExit' },
-        { message: 'Exit (undo changes to this file)', name: 'undoExit' },
+        { name: 'next', message: 'Looks good! Next file please' },
+        { name: 'retry', message: 'Try again (and ask me for advice)' },
+        { name: 'changes', message: 'See all changes to file' },
+        { name: 'diff', message: 'See original diff again' },
+        ...(options.cacheFile ? [{ name: 'removeCache', message: 'Remove cache for this file' }] : []),
+        { name: 'skip', message: 'Skip this file (undo changes)' },
+        { name: 'keepExit', message: 'Exit (keep changes to this file)' },
+        { name: 'undoExit', message: 'Exit (undo changes to this file)' },
       ],
     })
 
     keepChanges = keepChangesQuestion.keepChanges as KeepChangesResult
 
     if (keepChanges === 'removeCache') {
-      // load the existing cache file
-      const demoData = (await filesystem.readAsync(options.cacheFile, 'json')) || { request: {} }
-      // remove the request and response to the demo file
-      delete demoData.request[fileData.path]
-      // write it back
-      await filesystem.writeAsync(options.cacheFile, demoData, { jsonIndent: 2 })
+      await deleteCachedResponse(options.cacheFile, fileData)
       print.info(`\n↺  Cache removed for ${fileData.path}.\n`)
       continue
     }

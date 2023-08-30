@@ -1,8 +1,9 @@
 import { filesystem, http } from 'gluegun'
+import { CLIOptions } from '../types'
 
 type FetchOptions = {
   dir: string
-  options?: { from?: 'auto' | string; to?: 'auto' | string }
+  options?: CLIOptions
 }
 
 export async function fetchRNAppInfo({ dir, options }: FetchOptions) {

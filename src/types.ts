@@ -64,4 +64,6 @@ export type CLIOptions = {
   only?: string
   debug?: boolean
   cacheFile?: string
+  from?: string
+  to?: string
 }

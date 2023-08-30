@@ -81,8 +81,7 @@ export async function upgradeFile({ fileData, options, currentVersion, targetVer
     diff: fileData.diff,
   })
 
-  let doneWithFile = false
-  while (!doneWithFile) {
+  while (true) {
     // Restart the spinner for the current file
     spin(`Upgrading ${fileData.path}`)
 
@@ -99,7 +98,7 @@ export async function upgradeFile({ fileData, options, currentVersion, targetVer
       { content: admonishments, role: 'system' },
     ]
 
-    let aiResponse = await loadCachedResponse(options.cacheFile, fileData)
+    let aiResponse = options.cacheFile ? await loadCachedResponse(options.cacheFile, fileData) : undefined
 
     if (aiResponse) {
       // delay briefly to simulate a real request
@@ -156,17 +155,16 @@ export async function upgradeFile({ fileData, options, currentVersion, targetVer
 
     log({ keepChanges })
 
-    if (keepChanges === 'next') break
+    if (keepChanges === 'next') return { userWantsToExit: false }
     if (keepChanges === 'skip') {
       await result.undo()
       br()
       print.info(`↺  Changes to ${fileData.path} undone.`)
       fileData.change = 'skipped'
-      break
+      return { userWantsToExit: false }
     }
-    if (keepChanges === 'keepExit') {
-      return { userWantsToExit: true }
-    }
+    if (keepChanges === 'keepExit') return { userWantsToExit: true }
+
     if (keepChanges === 'undoExit') {
       await result.undo()
       br()
@@ -174,6 +172,7 @@ export async function upgradeFile({ fileData, options, currentVersion, targetVer
       fileData.change = 'skipped'
       return { userWantsToExit: true }
     }
+
     if (keepChanges === 'retry') {
       br()
       print.info('⇾ Any advice to help me convert this file better?')
@@ -197,8 +196,9 @@ export async function upgradeFile({ fileData, options, currentVersion, targetVer
 
       if (options.cacheFile) await deleteCachedResponse(options.cacheFile, fileData)
     } else {
+      // This really should never happen
       br()
-      print.error(`Something went wrong.`)
+      print.error(`Something went wrong. keepChanges: ${keepChanges}`)
       log({ keepChanges })
       fileData.change = 'pending'
       fileData.error = 'something went wrong'
