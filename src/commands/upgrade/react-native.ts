@@ -14,6 +14,7 @@ import { ChatCompletionRequestMessage, ChatCompletionResponseMessage } from 'ope
 import { fetchRNAppInfo } from '../../react-native/fetchRNAppInfo'
 import { br, flame, hr, info } from '../../utils/out'
 import { fetchRNDiff } from '../../react-native/fetchRNDiff'
+import { isFileIgnored } from '../../react-native/isFileIgnored'
 
 const ignoreFiles = [
   'README.md',
@@ -47,30 +48,18 @@ const command: GluegunCommand = {
     info('App:', filesystem.path(dir))
     info('Mode:', options.interactive ? `Interactive` : `Upgrade`)
 
-    // fetch all the app info from package.json and app.json
+    spin('Fetching app info')
     const appInfo = await fetchRNAppInfo({ dir, options })
-
-    // if there's an error, stop
     if (appInfo.error) return stop('🙈', appInfo.error)
-
     const { currentVersion, targetVersion, replacePlaceholder } = appInfo
-
     hide()
 
     info('Current:', bold(currentVersion))
     info('Upgrade:', bold(targetVersion))
 
-    // fetch the React Native Upgrade Helper diff
     spin('Fetching upgrade diff')
-
-    const result = await fetchRNDiff({ currentVersion, targetVersion })
-
-    // if there's an error, stop
-    if (result.error) return stop('🙈', result.error)
-
-    const { files } = result
-
-    // done('Diff fetched from ' + baseURL + diffPath)
+    const { files, error: diffError } = await fetchRNDiff({ currentVersion, targetVersion })
+    if (diffError) return stop('🙈', diffError)
     hide()
 
     // if they pass --list, just list the files and exit
@@ -80,41 +69,15 @@ const command: GluegunCommand = {
     }
 
     hr()
+
     print.info(bold(white(`Starting ${cyan('React Native')} upgrade using ${red(bold('Flame AI'))}\n`)))
 
     let userWantsToExit = false
-
-    // loop through each file and ask OpenAI to convert it using the diff for that file
     for (const file in files) {
       const fileData = files[file]
-
       const fileDiff = replacePlaceholder(fileData.diff)
 
-      // TODO: have the AI figure out which files need to be modified/renamed/etc
-
-      // Ignore binary files and files in ignoreFiles list
-      if (fileDiff.includes('GIT binary patch')) {
-        // stop('🙈', `Skipping binary patch for ${file}`)
-        print.info(`↠ Skipping: ${file} (binary file)`)
-        br()
-        fileData.change = 'skipped'
-        continue
-      }
-
-      if (ignoreFiles.find((v) => file.includes(v))) {
-        print.info(`↠ Ignoring: ${file}`)
-        br()
-        fileData.change = 'ignored'
-        continue
-      }
-
-      // if they pass --only, only convert the file they specify
-      if (options.only && !file.includes(options.only)) {
-        print.info(`↠ Skipping: ${file}`)
-        br()
-        fileData.change = 'skipped'
-        continue
-      }
+      if (isFileIgnored({ ignoreFiles, only: options.only, fileData })) continue
 
       // Replace the RnDiffApp placeholder with the app name
       const localFile = replacePlaceholder(file)
