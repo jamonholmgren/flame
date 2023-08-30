@@ -13,6 +13,13 @@ index 40c6dcd05..187894b6a 100644
 -  extends: '@react-native-community',
 +  extends: '@react-native',
   };
+diff --git a/RnDiffApp/android/gradle/wrapper/gradle-wrapper.jar b/RnDiffApp/android/gradle/wrapper/gradle-wrapper.jar
+index 41d9927a4d4fb3f96a785543079b8df6723c946b..943f0cbfa754578e88a3dae77fce6e3dea56edbf 100644
+GIT binary patch
+delta 36987
+zcmaI7V{oQH*DaihZQHh;iEZ1qlL_wFwrx9iY}=lAVmp~6XP)<~uj)LfPMv>O^|iZy
+ztzLWgT6@<nfragZHPHQl4Le=)q=E$jF~CY@VPXUL;;j&T8PI<mJ&cIXs$k0G3^%dC
+
 diff --git a/RnDiffApp/.gitignore b/RnDiffApp/.gitignore
 index 16f8c3077..0cab2ac6f 100644
 --- a/RnDiffApp/.gitignore
@@ -40,20 +47,21 @@ index 1142b1b20..1fa2c2e1a 100644
 `
     const result = parseGitDiff(diff)
 
-    expect(result).toEqual({
-      'RnDiffApp/.eslintrc.js': {
+    expect(result).toEqual([
+      {
         path: 'RnDiffApp/.eslintrc.js',
         diff: `  module.exports = {
     root: true,
 -  extends: '@react-native-community',
 +  extends: '@react-native',
   };
+
 `,
         change: 'pending',
         error: undefined,
         customPrompts: [],
       },
-      'RnDiffApp/.gitignore': {
+      {
         path: 'RnDiffApp/.gitignore',
         diff: `  
   # Temporary files created by Metro to check the health of the file watcher
@@ -61,12 +69,13 @@ index 1142b1b20..1fa2c2e1a 100644
 +
 +# testing
 +/coverage
+
 `,
         change: 'pending',
         error: undefined,
         customPrompts: [],
       },
-      'RnDiffApp/Gemfile': {
+      {
         path: 'RnDiffApp/Gemfile',
         diff: `  source 'https://rubygems.org'
   
@@ -82,6 +91,6 @@ index 1142b1b20..1fa2c2e1a 100644
         error: undefined,
         customPrompts: [],
       },
-    })
+    ])
   })
 })

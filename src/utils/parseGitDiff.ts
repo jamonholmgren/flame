@@ -34,40 +34,40 @@ type ParseDiffResult = FileData[]
  */
 export function parseGitDiff(diffString: string): ParseDiffResult {
   const files: ParseDiffResult = []
-  let currentFile: FileData = undefined
+  const fileDiffs = diffString.split('diff --git ')
 
-  const lines = diffString.split('\n')
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]
+  for (let i = 1; i < fileDiffs.length; i++) {
+    // Starting at 1 to skip the initial empty string
+    const fileDiff = fileDiffs[i]
 
-    if (line.startsWith('diff --git')) {
-      const match = line.match(/diff --git a\/(.+) b\/(.+)/)
-      if (match) {
-        const fileName = match[2]
-        currentFile = {
-          path: fileName,
-          diff: '',
-          change: 'pending',
-          error: undefined,
-          customPrompts: [],
-        }
-        files.push(currentFile)
-      }
-    } else if (line.startsWith('@@')) {
-      // Skip the @@ line, as it contains the line numbers
-      i++
-    } else if (line.startsWith('index')) {
-      // skip the index
-      i++
-    } else if (line.startsWith('---')) {
-      // skip the --- line
-      i++
-    } else if (line.startsWith('+++')) {
-      // skip the +++ line
-      i++
-    } else if (currentFile !== null) {
-      currentFile.diff += line + '\n'
+    if (fileDiffs[i].includes('GIT binary patch\n')) {
+      continue
     }
+
+    const lines = fileDiff.split('\n')
+
+    // The first line should contain the file names
+    const match = lines[0].match(/a\/(.+) b\/(.+)/)
+    if (!match) throw new Error(`Could not parse git diff line: ${lines[0]}`)
+
+    const fileName = match[2]
+    const currentFile: FileData = {
+      path: fileName,
+      diff: '',
+      change: 'pending',
+      error: undefined,
+      customPrompts: [],
+    }
+
+    // Construct the diff string for this file (excluding meta lines)
+    const diffLines = lines.slice(1) // Skip the first line, which contains the file names
+    for (const line of diffLines) {
+      if (!line.startsWith('@@') && !line.startsWith('index ') && !line.startsWith('---') && !line.startsWith('+++')) {
+        currentFile.diff += line + '\n'
+      }
+    }
+
+    files.push(currentFile)
   }
 
   return files
