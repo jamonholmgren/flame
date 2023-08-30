@@ -15,6 +15,8 @@ import { fetchRNAppInfo } from '../../react-native/fetchRNAppInfo'
 import { br, flame, hr, info } from '../../utils/out'
 import { fetchRNDiff } from '../../react-native/fetchRNDiff'
 import { isFileIgnored } from '../../react-native/isFileIgnored'
+import { keepChangesMenu } from '../../interactive/keepChangesMenu'
+import { callFunction } from '../../interactive/callFunction'
 
 const ignoreFiles = [
   'README.md',
@@ -73,14 +75,11 @@ const command: GluegunCommand = {
     print.info(bold(white(`Starting ${cyan('React Native')} upgrade using ${red(bold('Flame AI'))}\n`)))
 
     let userWantsToExit = false
-    for (const file in files) {
-      const fileData = files[file]
+    for (const fileData of files) {
       const fileDiff = replacePlaceholder(fileData.diff)
+      const localFile = replacePlaceholder(fileData.path)
 
       if (isFileIgnored({ ignoreFiles, only: options.only, fileData })) continue
-
-      // Replace the RnDiffApp placeholder with the app name
-      const localFile = replacePlaceholder(file)
 
       // load the file from the filesystem
       const sourceFileContents = await filesystem.readAsync(localFile)
@@ -157,7 +156,7 @@ const command: GluegunCommand = {
           { content: admonishments, role: 'system' },
         ]
 
-        let response: ChatCompletionResponseMessage = undefined
+        let aiResponse: ChatCompletionResponseMessage = undefined
 
         if (options.cacheFile) {
           const cacheFile = options.cacheFile
@@ -165,16 +164,16 @@ const command: GluegunCommand = {
           const cacheData = await filesystem.readAsync(cacheFile, 'json')
           // check if a recording for this request exists
           if (cacheData?.request[localFile]) {
-            response = cacheData.request[localFile]
+            aiResponse = cacheData.request[localFile]
           }
         }
 
-        if (response) {
+        if (aiResponse) {
           // delay briefly to simulate a real request
           await new Promise((resolve) => setTimeout(resolve, 2500))
           stop('🔥', `Using cached response for ${localFile}`)
         } else {
-          response = await chatGPTPrompt({
+          aiResponse = await chatGPTPrompt({
             functions,
             messages,
             model: 'gpt-4',
@@ -185,7 +184,7 @@ const command: GluegunCommand = {
             const cacheData = (await filesystem.readAsync(options.cacheFile, 'json')) || { request: {} }
 
             // add the request and response to the cache file
-            cacheData.request[localFile] = response
+            cacheData.request[localFile] = aiResponse
 
             // write it back
             await filesystem.writeAsync(options.cacheFile, cacheData, { jsonIndent: 2 })
@@ -194,14 +193,14 @@ const command: GluegunCommand = {
 
         hide()
 
-        log({ response })
+        log({ aiResponse })
 
-        const functionName = response?.function_call?.name
+        const functionName = aiResponse?.function_call?.name
         try {
-          var functionArgs = JSON.parse(response?.function_call?.arguments || '{}')
+          var functionArgs = JSON.parse(aiResponse?.function_call?.arguments || '{}')
         } catch (e) {
           print.error(`🛑 Error parsing function arguments: ${e.message}`)
-          print.error(`   ${response?.function_call?.arguments}`)
+          print.error(`   ${aiResponse?.function_call?.arguments}`)
 
           const cont = options.interactive ? await prompt.confirm('Try again?') : false
           if (cont) continue
@@ -213,56 +212,25 @@ const command: GluegunCommand = {
           continue
         }
 
-        // Look up function in the registry and call it with the parsed arguments
-        const func = functionName && functions.find((f) => f.name === functionName)
+        const fnResult = await callFunction({
+          functionName,
+          functionArgs,
+          functions,
+          aiResponse,
+          sourceFileContents,
+          fileData,
+        })
 
-        if (!func) {
-          // If there's no function call, maybe there's content to display?
-          if (response.content) {
-            print.info(response.content)
+        done(`Done with file ${localFile}.`)
 
-            // if we're being rate limited, we need to stop for a bit and try again
-            if (response.content.includes('too_many_requests')) {
-              print.error(`🛑 I'm being rate limited. Wait a while and try again.\n`)
-              await prompt.confirm('Press enter to continue')
-            } else if (response.content.includes('context_length_exceeded')) {
-              const len = sourceFileContents.length
-              print.error(`🛑 File is too long (${len} characters), skipping! Not enough tokens.`)
-              fileData.change = 'skipped'
-              fileData.error = 'file too long'
-              doneWithFile = true
-            } else if (response.content.includes('unknown_error')) {
-              print.error(`🛑 Unknown error, skipping!`)
-              fileData.change = 'skipped'
-              fileData.error = 'unknown error'
-              doneWithFile = true
-            }
-          }
-          continue
-        }
-
-        const result = await func.fn(functionArgs)
-
-        log({ result })
-
-        // fileData.changes = result.changes
-
-        done(`I've made changes to the file ${localFile}.`)
         br()
 
-        if (func.name === 'createFile') {
-          fileData.change = 'created'
-        } else if (func.name === 'patch') {
-          fileData.change = 'modified'
-        } else if (func.name === 'deleteFile') {
-          fileData.change = 'deleted'
-        }
-
-        // if not interactive, just keep the changes and move on to the next file
-        if (!options.interactive) {
+        if (fnResult.doneWithFile || !options.interactive) {
           doneWithFile = true
           continue
         }
+
+        const result = fnResult.result
 
         // interactive mode allows the user to undo the changes and give more instructions
         if (seeDiffs) {
@@ -274,77 +242,32 @@ const command: GluegunCommand = {
             print.info(`⇾ Many changes made to file -- choose "See all changes" to see them.`)
             print.info(`  Or check your code editor (probably easier)`)
           }
+          br()
         }
 
-        let keepChanges: { keepChanges: string } = undefined
-        while (true) {
-          keepChanges = await prompt.ask({
-            type: 'select',
-            name: 'keepChanges',
-            message: 'Review the changes and let me know what to do next!',
-            choices: [
-              { message: 'Looks good! Next file please', name: 'next' },
-              { message: 'Try again (and ask me for advice)', name: 'retry' },
-              { message: 'See all changes to file', name: 'changes' },
-              { message: 'See original diff again', name: 'diff' },
-              ...(options.cacheFile ? [{ message: 'Remove cache for this file', name: 'removeCache' }] : []),
-              { message: 'Skip this file (undo changes)', name: 'skip' },
-              { message: 'Exit (keep changes to this file)', name: 'keepExit' },
-              { message: 'Exit (undo changes to this file)', name: 'undoExit' },
-            ],
-          })
-
-          if (keepChanges?.keepChanges === 'removeCache') {
-            // load the existing cache file
-            const demoData = (await filesystem.readAsync(options.cacheFile, 'json')) || { request: {} }
-            // remove the request and response to the demo file
-            delete demoData.request[localFile]
-            // write it back
-            await filesystem.writeAsync(options.cacheFile, demoData, { jsonIndent: 2 })
-            br()
-            print.info(`↺  Cache removed for ${localFile}.`)
-            br()
-            continue
-          }
-
-          if (keepChanges?.keepChanges === 'changes') {
-            br()
-            print.info(result.changes)
-            br()
-            continue
-          }
-
-          if (keepChanges?.keepChanges === 'diff') {
-            br()
-            print.info(gray(fileData.diff))
-            br()
-            continue
-          }
-
-          break
-        }
+        const keepChanges = await keepChangesMenu({ result, localFile, fileData, options })
 
         log({ keepChanges })
 
-        if (keepChanges?.keepChanges === 'next') {
+        if (keepChanges === 'next') {
           doneWithFile = true
-        } else if (keepChanges?.keepChanges === 'skip') {
+        } else if (keepChanges === 'skip') {
           doneWithFile = true
           await result.undo()
           br()
           print.info(`↺  Changes to ${localFile} undone.`)
           fileData.change = 'skipped'
-        } else if (keepChanges?.keepChanges === 'keepExit') {
+        } else if (keepChanges === 'keepExit') {
           doneWithFile = true
           userWantsToExit = true
-        } else if (keepChanges?.keepChanges === 'undoExit') {
+        } else if (keepChanges === 'undoExit') {
           doneWithFile = true
           userWantsToExit = true
           await result.undo()
           br()
           print.info(`↺  Changes to ${localFile} undone.`)
           fileData.change = 'skipped'
-        } else if (keepChanges?.keepChanges === 'retry') {
+        } else if (keepChanges === 'retry') {
           br()
           print.info('⇾ Any advice to help me convert this file better?')
           br()
