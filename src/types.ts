@@ -57,3 +57,11 @@ export type ChatCompletionFunctionResult = {
 export type ChatCompletionFunction = ChatCompletionFunctions & {
   fn: (args: any) => Promise<ChatCompletionFunctionResult>
 }
+
+export type CLIOptions = {
+  interactive?: boolean
+  list?: boolean
+  only?: string
+  debug?: boolean
+  cacheFile?: string
+}

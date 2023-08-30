@@ -1,29 +1,27 @@
-import { filesystem, prompt, print } from 'gluegun'
 import type { FileData } from '../utils/parseGitDiff'
+import type { CLIOptions, ChatCompletionFunction } from '../types'
+import type { ChatCompletionRequestMessage, ChatCompletionResponseMessage } from 'openai'
+import { filesystem, prompt, print } from 'gluegun'
 import { hide, spin, stop, done } from '../utils/spin'
 import { br } from '../utils/out'
 import { coloredDiff } from '../utils/coloredDiff'
 import { createUpgradeRNPrompts } from '../ai/prompts/upgradeReactNativePrompts'
-import { ChatCompletionFunction } from '../types'
 import { patch } from '../ai/functions/patch'
 import { createFile } from '../ai/functions/createFile'
 import { deleteFile } from '../ai/functions/deleteFile'
-import { ChatCompletionRequestMessage, ChatCompletionResponseMessage } from 'openai'
 import { chatGPTPrompt } from '../ai/openai'
 import { callFunction } from '../interactive/callFunction'
 import { keepChangesMenu } from '../interactive/keepChangesMenu'
+import { deleteCachedResponse, loadCachedResponse, saveCachedResponse } from '../utils/aiCache'
 
-export async function upgradeFile({
-  fileData,
-  options,
-  currentVersion,
-  targetVersion,
-}: {
+type UpgradeFileOptions = {
   fileData: FileData
-  options: any
+  options: CLIOptions
   currentVersion: string
   targetVersion: string
-}) {
+}
+
+export async function upgradeFile({ fileData, options, currentVersion, targetVersion }: UpgradeFileOptions) {
   const { bold, white, gray } = print.colors
   const log = (t: any) => options.debug && console.log(t)
 
@@ -101,39 +99,16 @@ export async function upgradeFile({
       { content: admonishments, role: 'system' },
     ]
 
-    let aiResponse: ChatCompletionResponseMessage = undefined
-
-    if (options.cacheFile) {
-      const cacheFile = options.cacheFile
-      // load the existing cache file
-      const cacheData = await filesystem.readAsync(cacheFile, 'json')
-      // check if a recording for this request exists
-      if (cacheData?.request[fileData.path]) {
-        aiResponse = cacheData.request[fileData.path]
-      }
-    }
+    let aiResponse = await loadCachedResponse(options.cacheFile, fileData)
 
     if (aiResponse) {
       // delay briefly to simulate a real request
       await new Promise((resolve) => setTimeout(resolve, 2500))
       stop('🔥', `Using cached response for ${fileData.path}`)
     } else {
-      aiResponse = await chatGPTPrompt({
-        functions,
-        messages,
-        model: 'gpt-4',
-      })
+      aiResponse = await chatGPTPrompt({ functions, messages, model: 'gpt-4' })
 
-      if (options.cacheFile) {
-        // load the existing cache file
-        const cacheData = (await filesystem.readAsync(options.cacheFile, 'json')) || { request: {} }
-
-        // add the request and response to the cache file
-        cacheData.request[fileData.path] = aiResponse
-
-        // write it back
-        await filesystem.writeAsync(options.cacheFile, cacheData, { jsonIndent: 2 })
-      }
+      if (options.cacheFile) await saveCachedResponse(options.cacheFile, fileData, aiResponse)
     }
 
     hide()
@@ -156,21 +131,13 @@ export async function upgradeFile({
       return { userWantsToExit: false }
     }
 
-    const fnResult = await callFunction({
-      functionName,
-      functionArgs,
-      functions,
-      aiResponse,
-      fileData,
-    })
+    const fnResult = await callFunction({ functionName, functionArgs, functions, aiResponse, fileData })
 
     done(`Upgraded file ${fileData.path}.`)
 
     br()
 
-    if (fnResult.doneWithFile || !options.interactive) {
-      return { userWantsToExit: false }
-    }
+    if (fnResult.doneWithFile || !options.interactive) return { userWantsToExit: false }
 
     const result = fnResult.result
 
@@ -189,60 +156,46 @@ export async function upgradeFile({
 
     log({ keepChanges })
 
-    if (keepChanges === 'next') {
-      doneWithFile = true
-    } else if (keepChanges === 'skip') {
-      doneWithFile = true
+    if (keepChanges === 'next') break
+    if (keepChanges === 'skip') {
       await result.undo()
       br()
       print.info(`↺  Changes to ${fileData.path} undone.`)
       fileData.change = 'skipped'
-    } else if (keepChanges === 'keepExit') {
+      break
+    }
+    if (keepChanges === 'keepExit') {
       return { userWantsToExit: true }
-    } else if (keepChanges === 'undoExit') {
+    }
+    if (keepChanges === 'undoExit') {
       await result.undo()
       br()
       print.info(`↺  Changes to ${fileData.path} undone.`)
       fileData.change = 'skipped'
       return { userWantsToExit: true }
-    } else if (keepChanges === 'retry') {
+    }
+    if (keepChanges === 'retry') {
       br()
       print.info('⇾ Any advice to help me convert this file better?')
       br()
+
       fileData.customPrompts.forEach((i) => print.info(gray(`   ${i}\n`)))
 
-      const nextInstructions = await prompt.ask({
-        type: 'input',
-        name: 'nextInstructions',
-        message: 'Prompt',
-      })
+      const nextInstructionsQuestion = await prompt.ask({ type: 'input', name: 'nextInstructions', message: 'Prompt' })
+      const nextInstructions = nextInstructionsQuestion.nextInstructions
 
       br()
 
       // typing "exit" always gets out of the CLI
-      if (nextInstructions?.nextInstructions === 'exit') {
-        return { userWantsToExit: true }
-      }
+      if (nextInstructions === 'exit') return { userWantsToExit: true }
 
       // undo the changes made so we can try again
       await result.undo()
 
-      fileData.customPrompts.push(nextInstructions.nextInstructions)
-
+      fileData.customPrompts.push(nextInstructions)
       fileData.change = 'pending'
 
-      // also remove the cache for this file
-      if (options.cacheFile) {
-        // load the existing cache file
-        const cacheData = (await filesystem.readAsync(options.cacheFile, 'json')) || { request: {} }
-        // remove the request and response to the cache file
-        delete cacheData.request[fileData.path]
-        // write it back
-        await filesystem.writeAsync(options.cacheFile, cacheData, { jsonIndent: 2 })
-        br()
-        print.info(`↺  Cache removed for ${fileData.path}.`)
-        br()
-      }
+      if (options.cacheFile) await deleteCachedResponse(options.cacheFile, fileData)
     } else {
       br()
       print.error(`Something went wrong.`)

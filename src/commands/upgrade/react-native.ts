@@ -7,6 +7,7 @@ import { br, flame, hr, info } from '../../utils/out'
 import { fetchRNDiff } from '../../react-native/fetchRNDiff'
 import { isFileIgnored } from '../../react-native/isFileIgnored'
 import { upgradeFile } from '../../react-native/upgradeFile'
+import { CLIOptions } from '../../types'
 
 const ignoreFiles = [
   'README.md',
@@ -17,8 +18,8 @@ const command: GluegunCommand = {
   name: 'react-native',
   alias: ['rn'],
   run: async (toolbox) => {
-    const { print, filesystem, http, parameters, prompt } = toolbox
-    const { options } = parameters
+    const { print, filesystem, parameters } = toolbox
+    const options = parameters.options as CLIOptions
     const { colors } = print
     const { gray, red, cyan, white, bold } = colors
 
@@ -61,6 +62,7 @@ const command: GluegunCommand = {
     print.info(bold(white(`Starting ${cyan('React Native')} upgrade using ${red(bold('Flame AI'))}\n`)))
 
     for (const fileData of files) {
+      // Clean up the file data, replacing placeholders with real values
       fileData.diff = replacePlaceholder(fileData.diff)
       fileData.path = replacePlaceholder(fileData.path)
 
