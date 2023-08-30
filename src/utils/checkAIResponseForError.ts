@@ -1,11 +1,11 @@
 import { print, prompt } from 'gluegun'
-import { FileDiff } from './parseGitDiff'
-import { ChatCompletionResponseMessage } from 'openai'
+import type { FileData } from './parseGitDiff'
+import type { ChatCompletionResponseMessage } from 'openai'
 
 type CheckAIResponseForErrorOptions = {
   aiResponse: ChatCompletionResponseMessage
   sourceFileContents: string
-  fileData: FileDiff
+  fileData: FileData
 }
 
 export async function checkAIResponseForError({

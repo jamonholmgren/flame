@@ -1,4 +1,4 @@
-export type FileDiff = {
+export type FileData = {
   path: string
   diff: string
   change: 'pending' | 'created' | 'modified' | 'deleted' | 'skipped' | 'ignored'
@@ -6,7 +6,7 @@ export type FileDiff = {
   customPrompts: string[]
 }
 
-type ParseDiffResult = FileDiff[]
+type ParseDiffResult = FileData[]
 
 /**
  * Parses a git diff into an array with the files that changed
@@ -34,7 +34,7 @@ type ParseDiffResult = FileDiff[]
  */
 export function parseGitDiff(diffString: string): ParseDiffResult {
   const files: ParseDiffResult = []
-  let currentFile: FileDiff = undefined
+  let currentFile: FileData = undefined
 
   const lines = diffString.split('\n')
   for (let i = 0; i < lines.length; i++) {

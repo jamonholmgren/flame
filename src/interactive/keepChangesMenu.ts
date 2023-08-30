@@ -1,19 +1,18 @@
 import { print, prompt, filesystem } from 'gluegun'
-import { FileDiff } from '../utils/parseGitDiff'
-import { ChatCompletionFunctionResult } from '../types'
+import type { FileData } from '../utils/parseGitDiff'
+import type { ChatCompletionFunctionResult } from '../types'
 
 type KeepChangesOptions = {
   result: ChatCompletionFunctionResult
   options: {
     cacheFile?: string
   }
-  localFile: string
-  fileData: FileDiff
+  fileData: FileData
 }
 
 type KeepChangesResult = 'next' | 'retry' | 'changes' | 'diff' | 'removeCache' | 'skip' | 'keepExit' | 'undoExit'
 
-export async function keepChangesMenu({ result, localFile, fileData, options }: KeepChangesOptions) {
+export async function keepChangesMenu({ result, fileData, options }: KeepChangesOptions) {
   let keepChanges: KeepChangesResult = undefined
   while (true) {
     const keepChangesQuestion = await prompt.ask({
@@ -38,10 +37,10 @@ export async function keepChangesMenu({ result, localFile, fileData, options }: 
       // load the existing cache file
       const demoData = (await filesystem.readAsync(options.cacheFile, 'json')) || { request: {} }
       // remove the request and response to the demo file
-      delete demoData.request[localFile]
+      delete demoData.request[fileData.path]
       // write it back
       await filesystem.writeAsync(options.cacheFile, demoData, { jsonIndent: 2 })
-      print.info(`\n↺  Cache removed for ${localFile}.\n`)
+      print.info(`\n↺  Cache removed for ${fileData.path}.\n`)
       continue
     }
 
