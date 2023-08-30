@@ -1,5 +1,5 @@
 import { http } from 'gluegun'
-import { parseGitDiff } from '../utils/parseGitDiff'
+import { parseGitDiff } from '../tools/parseGitDiff'
 
 type FetchOptions = {
   currentVersion: string
