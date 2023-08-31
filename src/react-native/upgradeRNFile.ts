@@ -13,6 +13,7 @@ import { chatGPTPrompt } from '../ai/openai/openai'
 import { callFunction } from '../utils/callFunction'
 import { keepChangesMenu } from '../utils/keepChangesMenu'
 import { deleteCachedResponse, loadCachedResponse, saveCachedResponse } from '../utils/cache'
+import { checkAIResponseForError } from '../utils/checkAIResponseForError'
 
 type UpgradeFileOptions = {
   fileData: FileData
@@ -106,6 +107,11 @@ export async function upgradeFile({ fileData, options, currentVersion, targetVer
       stop('🔥', `Using cached response for ${fileData.path}`)
     } else {
       aiResponse = await chatGPTPrompt({ functions, messages, model: 'gpt-4' })
+
+      // check for too_many_requests, context_length_exceeded, etc
+      const errorResult = await checkAIResponseForError({ aiResponse, sourceFileContents, fileData })
+      if (errorResult.next === 'retry') continue
+      if (errorResult.next === 'skip') return { userWantsToExit: false }
 
       if (options.cacheFile) await saveCachedResponse(options.cacheFile, fileData.path, aiResponse)
     }
