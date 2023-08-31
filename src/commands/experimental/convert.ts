@@ -22,7 +22,6 @@
 import { GluegunCommand } from 'gluegun'
 import { openAI } from '../../ai/openai/openai'
 import { ChatCompletionRequestMessage } from 'openai'
-import { chunkByLines } from '../../utils/chunkByLines'
 
 // type for recipes
 type Recipe = {
@@ -80,91 +79,60 @@ const command: GluegunCommand = {
       return
     }
 
-    // Split the source file into chunks at function boundaries if it's too large
-    const MAX_SIZE = 5000
-    let chunks = [sourceFileContents]
-
-    if (sourceFileContents.length > MAX_SIZE) {
-      // If recipe includes a chunk function, use that to chunk the code
-      if (recipe.chunk) {
-        chunks = recipe.chunk(sourceFileContents, { lineChunks })
-      } else {
-        // Otherwise, split at function boundaries or use lineChunks if provided
-        let splitArray: number[] = lineChunks
-
-        if (!splitArray || splitArray.length === 0) {
-          // Default to chunking every 1000 lines if no lineChunks provided
-          splitArray = Array(Math.ceil(sourceFileContents.split('\n').length / 1000))
-            .fill(0)
-            .map((_, idx) => 1000 * idx)
-        }
-
-        chunks = chunkByLines(sourceFileContents, splitArray).filter((chunk) => chunk.trim().length > 0)
-      }
-    }
-
     // update spinner
     spinner.succeed()
     spinner.text = `AI conversion of ${sourceFile} from ${from} to ${to}`
     spinner.start()
 
-    let revampedCode = ''
-    for (let i = 0; i < chunks.length; i++) {
-      let chunk = chunks[i]
+    // Update spinner text to show progress for chunks
+    spinner.text = `AI conversion of ${sourceFile} from ${from} to ${to}`
 
-      // Update spinner text to show progress for chunks
-      spinner.text = `AI conversion of ${sourceFile} from ${from} to ${to} (${i + 1} of ${chunks.length})`
+    const messages: ChatCompletionRequestMessage[] = [
+      {
+        content: recipe.prompt,
+        role: 'system',
+      },
+      {
+        content: `Here is the source file:\n\n\`\`\`\n${sourceFileContents}\n\`\`\``,
+        role: 'system',
+      },
+      {
+        content: recipe.admonishments,
+        role: 'system',
+      },
+    ]
 
-      const messages: ChatCompletionRequestMessage[] = [
-        {
-          content: recipe.prompt,
-          role: 'system',
-        },
-        {
-          content: `Here is the source file:\n\n\`\`\`\n${chunk}\n\`\`\``,
-          role: 'system',
-        },
-        {
-          content: recipe.admonishments,
-          role: 'system',
-        },
-      ]
-
-      const openai = await openAI()
-      try {
-        var response = await openai.createChatCompletion({
-          model: 'gpt-4',
-          messages,
-          // max_tokens: 3000,
-          // temperature: 0,
-          // functions, // TODO: important
-          user: process.env.USER,
-        })
-      } catch (e) {
-        print.error(e)
-        print.error(e.response.data.error)
-        return
-      }
-
-      if (!response?.data?.choices) {
-        print.error('Error or no response from OpenAI')
-        return
-      }
-
-      // update spinner
-      spinner.succeed()
-      spinner.text = `Writing updated code to ${sourceFile}`
-      spinner.start()
-
-      // TODO: implement function calling!
-      const chunkRevampedCodeMessage = response.data.choices[0].message.content
-
-      // strip any line that starts and ends with backticks
-      const chunkRevampedCode = chunkRevampedCodeMessage.replace(/^```.*\n/gm, '').replace(/```.*\n$/gm, '')
-
-      // concatenate the revamped chunk to the output code
-      revampedCode += chunkRevampedCode + '\n'
+    const openai = await openAI()
+    try {
+      var response = await openai.createChatCompletion({
+        model: 'gpt-4',
+        messages,
+        // max_tokens: 3000,
+        // temperature: 0,
+        // functions, // TODO: important
+        user: process.env.USER,
+      })
+    } catch (e) {
+      print.error(e)
+      print.error(e.response.data.error)
+      return
     }
+
+    if (!response?.data?.choices) {
+      print.error('Error or no response from OpenAI')
+      return
+    }
+
+    // update spinner
+    spinner.succeed()
+    spinner.text = `Writing updated code to ${sourceFile}`
+    spinner.start()
+
+    // TODO: implement function calling!
+    const revampedCodeMessage = response.data.choices[0].message.content
+
+    // strip any line that starts and ends with backticks
+    const revampedCode = revampedCodeMessage.replace(/^```.*\n/gm, '').replace(/```.*\n$/gm, '')
 
     // now write the full revamped code back to the source file
     await toolbox.filesystem.writeAsync(sourceFile, revampedCode)
