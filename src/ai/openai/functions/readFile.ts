@@ -1,4 +1,5 @@
-import type { ChatCompletionFunction } from '../../../types'
+import type { ChatCompletionFunction, ChatCompletionFunctionResult } from '../../../types'
+import { filesystem } from 'gluegun'
 
 export const readFile: ChatCompletionFunction = {
   name: 'readFileAndReportBack',
@@ -13,9 +14,7 @@ export const readFile: ChatCompletionFunction = {
     },
     required: ['path'],
   },
-  fn: async (args: { path: string } & ContextUpdaterArgs, context) => {
-    let content = updateProjectAndTask(args, context)
-
+  fn: async (args: { path: string }) => {
     // Make sure it exists
     const fileExists = await filesystem.existsAsync(args.path)
 
@@ -24,9 +23,10 @@ export const readFile: ChatCompletionFunction = {
     }
 
     // We resubmit; the file will be read in the next iteration
-    return {
-      content,
-      resubmit: true,
+    const returnValue: ChatCompletionFunctionResult = {
+      next: 'resubmit',
     }
+
+    return returnValue
   },
 }

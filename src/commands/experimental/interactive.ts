@@ -1,17 +1,18 @@
-import { GluegunCommand } from 'gluegun'
-import { chatGPTPrompt, checkOpenAIKey } from '../ai/openai'
-import { createSmartContextBackchat } from '../ai/smart-context/smartContext'
-import { aiFunctions } from '../ai/functions'
-import { loadSmartContext, saveSmartContext } from '../ai/smart-context/persistSmartContext'
-import { loadFile } from '../utils/loadFile'
-import type { Message, SmartContext } from '../types'
-import { handleSpecialCommand } from '../utils/handleSpecialCommand'
-import { initialPrompt, statusPrompt } from '../utils/interactiveInitialPrompt'
-import { handleFunctionCall } from '../utils/handleFunctionCall'
-import { listFiles } from '../utils/listFiles'
-import { generateProjectSummary } from '../utils/generateProjectSummary'
-import { updateCurrentTaskEmbeddings } from '../utils/updateCurrentTaskEmbeddings'
-import { thinking } from '../utils/thinkingMessage'
+import type { SmartContext } from '../../types'
+import type { ChatCompletionRequestMessage } from 'openai'
+import type { GluegunCommand } from 'gluegun'
+import { chatGPTPrompt, checkOpenAIKey } from '../../ai/openai/openai'
+import { createSmartContextBackchat } from '../../utils/smartContext'
+import { aiFunctions } from '../../ai/functions'
+import { loadSmartContext, saveSmartContext } from '../../utils/persistSmartContext'
+import { loadFile } from '../../utils/loadFile'
+import { handleSpecialCommand } from '../../utils/handleSpecialCommand'
+import { initialPrompt, statusPrompt } from '../../prompts/interactiveInitialPrompt'
+import { handleFunctionCall } from '../../utils/handleFunctionCall'
+import { listFiles } from '../../utils/listFiles'
+import { generateProjectSummary } from '../../utils/generateProjectSummary'
+import { updateCurrentTaskEmbeddings } from '../../utils/updateCurrentTaskEmbeddings'
+import { thinking } from '../../utils/thinkingMessage'
 
 // context holds the current state of the chat
 const context: SmartContext = {
@@ -76,9 +77,7 @@ const command: GluegunCommand = {
     // kick off an async loadFile for each file in the working folder
     // this will load the file contents into memory so we can search them
     // for relevant information
-    await Promise.allSettled(
-      Object.keys(context.files).map((fileName) => loadFile(fileName, context))
-    )
+    await Promise.allSettled(Object.keys(context.files).map((fileName) => loadFile(fileName, context)))
     await saveSmartContext(context)
     fileLoaderSpinner.succeed(
       `All set! I just browsed through ${
@@ -111,7 +110,7 @@ const command: GluegunCommand = {
       const result = await prompt.ask({ type: 'input', name: 'chatMessage', message: '→ ' })
       print.info('')
 
-      const newMessage: Message = {
+      const newMessage: ChatCompletionRequestMessage = {
         content: result.chatMessage,
         role: 'user',
       }

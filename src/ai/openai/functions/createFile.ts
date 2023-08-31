@@ -1,6 +1,11 @@
 import { filesystem, print } from 'gluegun'
 import { ChatCompletionFunction } from '../../../types'
 
+type CreateFileArgs = {
+  path: string
+  contents: string
+}
+
 export const createFile: ChatCompletionFunction = {
   name: 'createFile',
   description: 'Create a file',
@@ -17,7 +22,7 @@ export const createFile: ChatCompletionFunction = {
       },
     },
   },
-  fn: async (args) => {
+  fn: async (args: CreateFileArgs) => {
     // Create the file
     await filesystem.writeAsync(args.path, args.contents)
 

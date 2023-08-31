@@ -1,6 +1,10 @@
 import { filesystem, print } from 'gluegun'
 import { ChatCompletionFunction } from '../../../types'
 
+type DeleteFileArgs = {
+  path: string
+}
+
 export const deleteFile: ChatCompletionFunction = {
   name: 'deleteFile',
   description: 'Delete a file',
@@ -13,7 +17,7 @@ export const deleteFile: ChatCompletionFunction = {
       },
     },
   },
-  fn: async (args) => {
+  fn: async (args: DeleteFileArgs) => {
     // Delete the file
     await filesystem.removeAsync(args.path)
 

@@ -1,15 +1,16 @@
+import type { SmartContext } from '../types'
+import type { ChatCompletionRequestMessage } from 'openai'
 import { filesystem, print } from 'gluegun'
-import { Message, SmartContext } from '../types'
 import { mostRelevantFiles } from './mostRelevantFiles'
 
 const FILE_LENGTH_LIMIT = 1000 * 3 // characters * 3 = tokens (roughly)
 const TOTAL_FILE_LENGTH_LIMIT = 5000 * 3 // characters * 3 = tokens (roughly)
 
-export async function createSmartContextBackchat(context: SmartContext): Promise<Message[]> {
+export async function createSmartContextBackchat(context: SmartContext): Promise<ChatCompletionRequestMessage[]> {
   // This function will provide the backchat for the interactive.ts command,
   // carefully tuned for the current context.
 
-  const backchat: Message[] = []
+  const backchat: ChatCompletionRequestMessage[] = []
 
   let smartContextDescription = ``
 

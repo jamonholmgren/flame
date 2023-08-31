@@ -1,6 +1,6 @@
-import { Message } from '../types'
+import type { ChatCompletionRequestMessage } from 'openai'
 
-export const initialPrompt: Message = {
+export const initialPrompt: ChatCompletionRequestMessage = {
   content: `
 You are a bot that helps a developer build and modify software.
 You understand instructions and can make the changes yourself.
@@ -17,7 +17,7 @@ If we give you new general information about the project, update the project des
 }
 
 // status -- time, date, working folder
-export const statusPrompt = (workingFolder: string): Message => ({
+export const statusPrompt = (workingFolder: string): ChatCompletionRequestMessage => ({
   content: `Current date: ${new Date().toLocaleString()}\nProject base folder: ${workingFolder}`,
   role: 'system',
 })
