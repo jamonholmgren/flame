@@ -1,7 +1,5 @@
 import type { FileData } from '../types'
 
-type ParseDiffResult = FileData[]
-
 /**
  * Parses a git diff into an array with the files that changed
  * and the diff for each file, along with some other metadata.
@@ -26,8 +24,8 @@ type ParseDiffResult = FileData[]
  *  ...
  * ]
  */
-export function parseGitDiff(diffString: string): ParseDiffResult {
-  const files: ParseDiffResult = []
+export function parseGitDiff(diffString: string): FileData[] {
+  const files: FileData[] = []
   const fileDiffs = diffString.split('diff --git ')
 
   for (let i = 1; i < fileDiffs.length; i++) {

@@ -1,6 +1,6 @@
 import { print } from 'gluegun'
-import { SmartContext } from '../types'
-import { createSmartContextBackchat } from './smartContext'
+import { SmartContext } from '../../types'
+import { createSmartContextBackchat } from '../smartContext'
 import { mostRelevantFiles } from './mostRelevantFiles'
 
 export async function handleSpecialCommand(command: string, context: SmartContext, debugLog: any[]) {

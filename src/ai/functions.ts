@@ -1,6 +1,6 @@
 import { filesystem, print } from 'gluegun'
 import { ChatCompletionFunctions } from 'openai'
-import { listFiles } from '../utils/listFiles'
+import { listFiles } from '../utils/experimental/listFiles'
 import { SmartContext } from '../types'
 
 type ChatCompletionFunction = ChatCompletionFunctions & {

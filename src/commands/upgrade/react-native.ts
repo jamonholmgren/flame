@@ -3,7 +3,7 @@ import { spin, hide, stop } from '../../utils/spin'
 import { summarize } from '../../utils/summarize'
 import { checkGitStatus } from '../../utils/checkGitStatus'
 import { fetchRNAppInfo } from '../../react-native/fetchRNAppInfo'
-import { br, flame, hr, info } from '../../utils/out'
+import { br, flame, hr, info } from '../../utils/printing'
 import { fetchRNDiff } from '../../react-native/fetchRNDiff'
 import { isFileIgnored } from '../../utils/isFileIgnored'
 import { upgradeFile } from '../../react-native/upgradeRNFile'
@@ -76,7 +76,7 @@ const command: GluegunCommand = {
     }
 
     // Print a summary of the changes
-    summarize(Object.values(files), print, replacePlaceholder, br, hr)
+    summarize(files, replacePlaceholder)
 
     hr()
     print.info(bold(white(`Done!\n`)))

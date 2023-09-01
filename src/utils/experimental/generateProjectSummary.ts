@@ -1,4 +1,4 @@
-import { SmartContext } from '../types'
+import { SmartContext } from '../../types'
 import { generateSummary } from './generateSummary'
 import { loadFile } from './loadFile'
 
@@ -10,9 +10,7 @@ export async function generateProjectSummary(context: SmartContext) {
     // Generate a summary using gpt-3.5-turbo
     const summary = await generateSummary(
       `Use the following README.md contents and file list to generate a summary of the project as few words as possible. Focus on things that are important for a coder to know about the project before they start working on it.`,
-      contents +
-        `\n\nHere are all the files in the project:\n\n` +
-        Object.keys(context.files).join('\n')
+      contents + `\n\nHere are all the files in the project:\n\n` + Object.keys(context.files).join('\n')
     )
 
     context.project = summary

@@ -1,6 +1,6 @@
 import { ChatCompletionResponseMessage } from 'openai'
-import { AIFunctions } from '../ai/functions'
-import { SmartContext } from '../types'
+import { AIFunctions } from '../../ai/functions'
+import { SmartContext } from '../../types'
 import { print } from 'gluegun'
 
 // Helper function to handle function calls

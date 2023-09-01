@@ -1,4 +1,8 @@
-export function summarize(summary, print, replacePlaceholder, br, hr) {
+import type { FileData } from '../types'
+import { print } from 'gluegun'
+import { br, hr } from './printing'
+
+export function summarize(summary: FileData[], replacePlaceholder: (path: string) => string) {
   const { bold, white, gray } = print.colors
   const created = summary.filter((f) => f.change === 'created')
   const modified = summary.filter((f) => f.change === 'modified')

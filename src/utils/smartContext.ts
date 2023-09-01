@@ -1,7 +1,7 @@
 import type { SmartContext } from '../types'
 import type { ChatCompletionRequestMessage } from 'openai'
 import { filesystem, print } from 'gluegun'
-import { mostRelevantFiles } from './mostRelevantFiles'
+import { mostRelevantFiles } from './experimental/mostRelevantFiles'
 
 const FILE_LENGTH_LIMIT = 1000 * 3 // characters * 3 = tokens (roughly)
 const TOTAL_FILE_LENGTH_LIMIT = 5000 * 3 // characters * 3 = tokens (roughly)

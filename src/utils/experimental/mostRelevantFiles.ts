@@ -1,4 +1,4 @@
-import { SmartContext } from '../types'
+import { SmartContext } from '../../types'
 import { cosineSimilarity } from './cosignSimilarity'
 
 export function mostRelevantFiles(context: SmartContext, minSimilarity = 0.8) {

@@ -1,5 +1,5 @@
-import { createEmbedding } from '../ai/openai/openai'
-import { SmartContext } from '../types'
+import { createEmbedding } from '../../ai/openai/openai'
+import { SmartContext } from '../../types'
 
 export async function updateCurrentTaskEmbeddings(context: SmartContext) {
   const embedding = await createEmbedding(

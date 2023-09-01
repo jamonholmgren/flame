@@ -1,7 +1,7 @@
 import { print, prompt, filesystem } from 'gluegun'
 import type { FileData } from '../types'
 import type { ChatCompletionFunctionResult } from '../types'
-import { deleteCachedResponse } from './cache'
+import { deleteCachedResponse } from './persistCache'
 
 type KeepChangesOptions = {
   result: ChatCompletionFunctionResult

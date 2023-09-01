@@ -1,5 +1,5 @@
 import { filesystem } from 'gluegun'
-import type { SmartContext, ListFilesOptions } from '../types'
+import type { SmartContext, ListFilesOptions } from '../../types'
 
 /**
  * Lists all files in a given path, and adds them to the context.

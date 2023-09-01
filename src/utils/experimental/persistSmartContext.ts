@@ -1,7 +1,7 @@
 // Helper functions for handling chat history
 
 import { filesystem } from 'gluegun'
-import type { SmartContext } from '../types'
+import type { SmartContext } from '../../types'
 
 const flamePath = '.config/flame'
 const flameFile = `flame-data.json`
