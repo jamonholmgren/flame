@@ -4,7 +4,6 @@ import type { ChatCompletionRequestMessage } from 'openai'
 import { filesystem, prompt, print } from 'gluegun'
 import { hide, spin, stop, done } from '../utils/spin'
 import { br } from '../utils/printing'
-import { coloredDiff } from '../utils/coloredDiff'
 import { createUpgradeRNPrompts } from '../prompts/upgradeReactNativePrompts'
 import { patch } from '../ai/openai/functions/patch'
 import { createFile } from '../ai/openai/functions/createFile'
@@ -14,6 +13,7 @@ import { callFunction } from '../utils/callFunction'
 import { keepChangesMenu } from '../utils/keepChangesMenu'
 import { deleteCachedResponse, loadCachedResponse, saveCachedResponse } from '../utils/persistCache'
 import { checkAIResponseForError } from '../utils/checkAIResponseForError'
+import { skipOrUpgradeMenu } from '../utils/skipOrUpgradeMenu'
 
 type UpgradeFileOptions = {
   fileData: FileData
@@ -23,7 +23,7 @@ type UpgradeFileOptions = {
 }
 
 export async function upgradeFile({ fileData, options, currentVersion, targetVersion }: UpgradeFileOptions) {
-  const { bold, white, gray } = print.colors
+  const { bold, gray } = print.colors
   const log = (t: any) => options.debug && console.log(t)
 
   // load the file from the filesystem
@@ -45,34 +45,9 @@ export async function upgradeFile({ fileData, options, currentVersion, targetVer
   br()
 
   // check if the user wants to convert the next file or skip this file
-  let skipFile = 'upgrade'
-  if (options.interactive) {
-    print.info(white('Upgrade Helper diff:\n\n') + coloredDiff(fileData.diff) + '\n')
-
-    const skipAnswer = await prompt.ask({
-      type: 'select',
-      name: 'skipFile',
-      message: 'Do you want to upgrade this file?',
-      choices: [
-        { message: `Start upgrading ${fileData.path}`, name: 'upgrade' },
-        { message: 'Skip this file', name: 'skip' },
-        { message: 'Exit', name: 'exit' },
-      ],
-    })
-
-    skipFile = skipAnswer['skipFile']
-  }
-
-  br()
-
-  log({ skipFile })
-
-  if (skipFile === 'skip') {
-    fileData.change = 'skipped'
-    return { userWantsToExit: false }
-  } else if (skipFile === 'exit') {
-    return { userWantsToExit: true }
-  } // else, we're good!
+  const suMenu = options.interactive ? await skipOrUpgradeMenu(fileData) : { next: 'upgrade' }
+  if (suMenu?.next === 'skip') return { userWantsToExit: false }
+  if (suMenu?.next === 'exit') return { userWantsToExit: true }
 
   const { orientation, convertPrompt, admonishments } = createUpgradeRNPrompts({
     from: currentVersion,
