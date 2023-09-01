@@ -1,7 +1,7 @@
 import type { FileData } from '../types'
 import { prompt } from 'gluegun'
 
-export async function skipOrUpgradeMenu(fileData: FileData): Promise<{ next: 'skip' | 'upgrade' | 'exit' }> {
+export async function menuSkipOrUpgrade(fileData: FileData): Promise<{ next: 'skip' | 'upgrade' | 'exit' }> {
   let skipFile = 'upgrade'
   const skipAnswer = await prompt.ask({
     type: 'select',

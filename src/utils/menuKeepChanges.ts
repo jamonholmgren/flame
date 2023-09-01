@@ -2,6 +2,7 @@ import { print, prompt, filesystem } from 'gluegun'
 import type { FileData } from '../types'
 import type { ChatCompletionFunctionResult } from '../types'
 import { deleteCachedResponse } from './persistCache'
+import { coloredDiff } from './coloredDiff'
 
 type KeepChangesOptions = {
   result: ChatCompletionFunctionResult
@@ -11,7 +12,17 @@ type KeepChangesOptions = {
 
 type KeepChangesResult = 'next' | 'retry' | 'changes' | 'diff' | 'removeCache' | 'skip' | 'keepExit' | 'undoExit'
 
-export async function keepChangesMenu({ result, fileData, options }: KeepChangesOptions) {
+export async function menuKeepChanges({ result, fileData, options }: KeepChangesOptions) {
+  if (result.changes.split('\n').length === 0) {
+    print.info(`⇾ No changes made to file.\n`)
+  } else if (result.changes.split('\n').length <= 30) {
+    print.info(result.changes + '\n')
+  } else {
+    print.info(`⇾ Many changes made to file -- choose "See all changes" to see them.`)
+    print.info(`  Or check your code editor (probably easier)\n`)
+  }
+  print.info('\n')
+
   let keepChanges: KeepChangesResult = undefined
   while (true) {
     const keepChangesQuestion = await prompt.ask({
@@ -44,7 +55,7 @@ export async function keepChangesMenu({ result, fileData, options }: KeepChanges
     }
 
     if (keepChanges === 'diff') {
-      print.info('\n' + print.colors.gray(fileData.diff) + '\n')
+      print.info('\n' + coloredDiff(fileData.diff) + '\n')
       continue
     }
 

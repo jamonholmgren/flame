@@ -10,10 +10,12 @@ import { createFile } from '../ai/openai/functions/createFile'
 import { deleteFile } from '../ai/openai/functions/deleteFile'
 import { chatGPTPrompt } from '../ai/openai/openai'
 import { callFunction } from '../utils/callFunction'
-import { keepChangesMenu } from '../utils/keepChangesMenu'
 import { deleteCachedResponse, loadCachedResponse, saveCachedResponse } from '../utils/persistCache'
 import { checkAIResponseForError } from '../utils/checkAIResponseForError'
-import { skipOrUpgradeMenu } from '../utils/skipOrUpgradeMenu'
+import { retryGetAdvice } from '../utils/retryGetAdvice'
+import { coloredDiff } from '../utils/coloredDiff'
+import { menuKeepChanges } from '../utils/menuKeepChanges'
+import { menuSkipOrUpgrade } from '../utils/menuSkipOrUpgrade'
 
 type UpgradeFileOptions = {
   fileData: FileData
@@ -23,7 +25,7 @@ type UpgradeFileOptions = {
 }
 
 export async function upgradeFile({ fileData, options, currentVersion, targetVersion }: UpgradeFileOptions) {
-  const { bold, gray } = print.colors
+  const { bold, white } = print.colors
   const log = (t: any) => options.debug && console.log(t)
 
   // load the file from the filesystem
@@ -45,7 +47,8 @@ export async function upgradeFile({ fileData, options, currentVersion, targetVer
   br()
 
   // check if the user wants to convert the next file or skip this file
-  const suMenu = options.interactive ? await skipOrUpgradeMenu(fileData) : { next: 'upgrade' }
+  print.info(white('Upgrade Helper diff:\n\n') + coloredDiff(fileData.diff) + '\n')
+  const suMenu = options.interactive ? await menuSkipOrUpgrade(fileData) : { next: 'upgrade' }
   if (suMenu?.next === 'skip') return { userWantsToExit: false }
   if (suMenu?.next === 'exit') return { userWantsToExit: true }
 
@@ -122,59 +125,25 @@ export async function upgradeFile({ fileData, options, currentVersion, targetVer
     const result = fnResult.result
 
     // interactive mode allows the user to undo the changes and give more instructions
-    if (result.changes.split('\n').length === 0) {
-      print.info(`⇾ No changes made to file.\n`)
-    } else if (result.changes.split('\n').length <= 20) {
-      print.info(result.changes + '\n')
-    } else {
-      print.info(`⇾ Many changes made to file -- choose "See all changes" to see them.`)
-      print.info(`  Or check your code editor (probably easier)\n`)
-    }
-    br()
-
-    const keepChanges = await keepChangesMenu({ result, fileData, options })
+    const keepChanges = await menuKeepChanges({ result, fileData, options })
 
     log({ keepChanges })
 
     if (keepChanges === 'next') return { userWantsToExit: false }
-    if (keepChanges === 'skip') {
-      await result.undo()
-      br()
-      print.info(`↺  Changes to ${fileData.path} undone.`)
-      fileData.change = 'skipped'
-      return { userWantsToExit: false }
-    }
     if (keepChanges === 'keepExit') return { userWantsToExit: true }
 
-    if (keepChanges === 'undoExit') {
+    if (keepChanges === 'skip' || keepChanges === 'undoExit') {
       await result.undo()
       br()
       print.info(`↺  Changes to ${fileData.path} undone.`)
       fileData.change = 'skipped'
-      return { userWantsToExit: true }
+      const userWantsToExit = keepChanges === 'undoExit'
+      return { userWantsToExit }
     }
 
     if (keepChanges === 'retry') {
-      br()
-      print.info('⇾ Any advice to help me convert this file better?')
-      br()
-
-      fileData.customPrompts.forEach((i) => print.info(gray(`   ${i}\n`)))
-
-      const nextInstructionsQuestion = await prompt.ask({ type: 'input', name: 'nextInstructions', message: 'Prompt' })
-      const nextInstructions = nextInstructionsQuestion.nextInstructions
-
-      br()
-
-      // typing "exit" always gets out of the CLI
-      if (nextInstructions === 'exit') return { userWantsToExit: true }
-
-      // undo the changes made so we can try again
+      await retryGetAdvice(fileData)
       await result.undo()
-
-      fileData.customPrompts.push(nextInstructions)
-      fileData.change = 'pending'
-
       if (options.cacheFile) await deleteCachedResponse(options.cacheFile, fileData.path)
     } else {
       // This really should never happen
