@@ -8,7 +8,7 @@ async function run(argv) {
   const cli = build()
     .brand('flame')
     .src(__dirname)
-    .help() // provides default for help, h, --help, -h
+    // .help() // provides default for help, h, --help, -h
     .version() // provides default for version, v, --version, -v
     .exclude([
       // 'meta',

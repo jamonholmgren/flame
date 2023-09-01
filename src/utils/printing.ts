@@ -23,5 +23,5 @@ export function br() {
 }
 
 export function hr() {
-  print.info('\n' + '─'.repeat(51) + '\n')
+  print.info('\n' + '─'.repeat(51))
 }

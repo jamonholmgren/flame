@@ -8,6 +8,7 @@ import { fetchRNDiff } from '../../react-native/fetchRNDiff'
 import { isFileIgnored } from '../../utils/isFileIgnored'
 import { upgradeFile } from '../../react-native/upgradeRNFile'
 import { CLIOptions } from '../../types'
+import { helpUpgradeRN } from '../../utils/helpUpgradeRN'
 
 const ignoreFiles = [
   'README.md',
@@ -25,6 +26,12 @@ const command: GluegunCommand = {
 
     // Retrieve the path of the folder to upgrade, default current folder.
     const dir = parameters.first || './'
+
+    // If help is requested, show that
+    if (options.help) {
+      print.info(helpUpgradeRN())
+      return
+    }
 
     // Make sure the git repo is clean before we start (warn if not)
     await checkGitStatus(toolbox)
@@ -51,9 +58,17 @@ const command: GluegunCommand = {
     if (diffError) return stop('🙈', diffError)
     hide()
 
+    // update the path and diff with the placeholder values
+    files.forEach((f) => {
+      f.path = replacePlaceholder(f.path)
+      f.diff = replacePlaceholder(f.diff)
+    })
+
     // if they pass --list, just list the files and exit
     if (options.list) {
-      for (const f in files) print.success(f)
+      print.info('\nFiles that will be upgraded:\n')
+      files.forEach((f) => print.success(f.path))
+      br()
       return
     }
 
@@ -62,10 +77,6 @@ const command: GluegunCommand = {
     print.info(bold(white(`Starting ${cyan('React Native')} upgrade using ${red(bold('Flame AI'))}\n`)))
 
     for (const fileData of files) {
-      // Clean up the file data, replacing placeholders with real values
-      fileData.diff = replacePlaceholder(fileData.diff)
-      fileData.path = replacePlaceholder(fileData.path)
-
       if (isFileIgnored({ ignoreFiles, only: options.only, fileData })) continue
 
       const result = await upgradeFile({ fileData, options, currentVersion, targetVersion })
@@ -76,7 +87,7 @@ const command: GluegunCommand = {
     }
 
     // Print a summary of the changes
-    summarize(files, replacePlaceholder)
+    summarize(files)
 
     hr()
     print.info(bold(white(`Done!\n`)))
