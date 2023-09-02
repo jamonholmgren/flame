@@ -62,6 +62,7 @@ export async function upgradeFile({ fileData, options, currentVersion, targetVer
 
   while (true) {
     // Restart the spinner for the current file
+    br()
     spin(`Upgrading ${fileData.path}`)
 
     // We'll let the AI patch files and create files

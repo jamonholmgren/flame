@@ -1,5 +1,5 @@
 import { GluegunCommand } from 'gluegun'
-import { br, flame, hr } from '../utils/printing'
+import { flameHeader } from '../utils/printing'
 import { helpUpgradeRN } from '../utils/helpUpgradeRN'
 
 const command: GluegunCommand = {
@@ -7,12 +7,9 @@ const command: GluegunCommand = {
   alias: ['help'],
   run: async (toolbox) => {
     const { print } = toolbox
-    const { gray, red, bold, white, cyan } = print.colors
+    const { gray, bold, white, cyan } = print.colors
 
-    hr()
-    flame()
-    print.info(`🔥 ${bold(red('Flame AI:'))} ${gray('Ignite your code with the power of AI.')}`)
-    hr()
+    flameHeader()
 
     print.info(`
 Flame AI is a tool that brings the power of AI to your codebase.

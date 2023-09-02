@@ -3,7 +3,7 @@ import { spin, hide, stop } from '../../utils/spin'
 import { summarize } from '../../utils/summarize'
 import { checkGitStatus } from '../../utils/checkGitStatus'
 import { fetchRNAppInfo } from '../../react-native/fetchRNAppInfo'
-import { br, flame, hr, info } from '../../utils/printing'
+import { br, flameHeader, hr, info } from '../../utils/printing'
 import { fetchRNDiff } from '../../react-native/fetchRNDiff'
 import { isFileIgnored } from '../../utils/isFileIgnored'
 import { upgradeFile } from '../../react-native/upgradeRNFile'
@@ -22,7 +22,7 @@ const command: GluegunCommand = {
     const { print, filesystem, parameters } = toolbox
     const options = parameters.options as CLIOptions
     const { colors } = print
-    const { gray, red, cyan, white, bold } = colors
+    const { red, cyan, white, bold } = colors
 
     // Retrieve the path of the folder to upgrade, default current folder.
     const dir = parameters.first || './'
@@ -36,11 +36,8 @@ const command: GluegunCommand = {
     // Make sure the git repo is clean before we start (warn if not)
     await checkGitStatus(toolbox)
 
-    hr()
-    flame()
+    flameHeader()
 
-    print.info(`🔥 ${bold(red('Flame AI:'))} ${gray('Ignite your code with the power of AI.')}`)
-    hr()
     info('App:', filesystem.path(dir))
     info('Mode:', options.interactive ? `Interactive` : `Upgrade`)
 
@@ -69,10 +66,14 @@ const command: GluegunCommand = {
       print.info('\nFiles that will be upgraded:\n')
       files.forEach((f) => print.success(f.path))
       br()
+      hr()
+      br()
       return
     }
 
+    br()
     hr()
+    br()
 
     print.info(bold(white(`Starting ${cyan('React Native')} upgrade using ${red(bold('Flame AI'))}\n`)))
 

@@ -1,16 +1,14 @@
 import { print } from 'gluegun'
 
-const { red, gray, white } = print.colors
+const { red, gray, white, bold } = print.colors
 
 export function flame() {
   print.info(
-    red(`
-    🔥🔥🔥  
+    red(`    🔥🔥🔥  
     |  __| _🔥                      🔥_🔥   🔥🔥
     | |_  | | 🔥__  🔥🔥   🔥_🔥     / \\   |_ _|  
     | __| | |/ _\` || '  \\🔥/ -_)   🔥 _ \\   | |   
-    |_|   |_|\\__,_||_|_|_| \\___|   /_/ \\_\\ |___|             
-    `)
+    |_|   |_|\\__,_||_|_|_| \\___|   /_/ \\_\\ |___|`)
   )
 }
 
@@ -23,5 +21,16 @@ export function br() {
 }
 
 export function hr() {
-  print.info('\n' + '─'.repeat(51))
+  print.info('─'.repeat(51))
+}
+
+export function flameHeader() {
+  br()
+  hr()
+  br()
+  flame()
+  print.info(`\n🔥 ${bold(red('Flame AI:'))} ${gray('Ignite your code with the power of AI.')}`)
+  br()
+  hr()
+  br()
 }
