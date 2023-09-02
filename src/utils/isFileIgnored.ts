@@ -1,9 +1,16 @@
+import type { FileData } from '../types'
 import { print } from 'gluegun'
+
+type IsFileIgnoredProps = {
+  ignoreFiles: string[]
+  only: string
+  fileData: FileData
+}
 
 /**
  * Check if the file should be ignored
  */
-export function isFileIgnored({ ignoreFiles, only, fileData }): boolean {
+export function isFileIgnored({ ignoreFiles, only, fileData }: IsFileIgnoredProps): boolean {
   if (fileData.diff.includes('GIT binary patch')) {
     // stop('🙈', `Skipping binary patch for ${file}`)
     print.info(`↠ Skipping: ${fileData.path} (binary file)\n`)
