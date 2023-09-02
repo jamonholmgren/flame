@@ -34,6 +34,8 @@ Here's the command with all available options:
 npx flame upgrade react-native --interactive --from=0.72.2 --to=auto --list --only=somefile.mm
 ```
 
+Read more about `flame upgrade react-native` in the [Command Reference](docs/commands.md#upgrade-react-native).
+
 ## Philosophy
 
 AI (specifically large language models like OpenAI's ChatGPT) is a powerful tool. Flame AI is built to be a minimalist CLI that brings a great developer experience and useful tools for making code modifications (codemods) and code generation.
