@@ -9,9 +9,9 @@
 
 ## Architecture
 
-Like most Gluegun apps, the commands live in `src/commands` and there are utility functions in `src/utils`. There's also a bunch of ai related functionality in `src/ai`. There are a few React Native specific features in `src/react-native`.
+Like most Gluegun apps, the commands live in `src/commands` and there are utility functions in `src/utils`. There's also a bunch of ai related functionality in `src/ai`. There are a few React Native specific features in `src/react-native`. Exported types are in `src/types.ts`.
 
-Tips (note this can change as the project evolves):
+## Contributing Tips (note this can change as the project evolves):
 
 - We want to keep the folder structure very _flat_. We don't want super deep nested folders.
 - Generally speaking, keep the commands as thin as possible, primarily focused on user interaction. Put the bulk of the logic in other folders.
@@ -21,3 +21,4 @@ Tips (note this can change as the project evolves):
 - If you're building something that's very AI related, put it in the `src/ai` folder. Mostly things like accessing other AI cloud providers/LLMs. (Most of the AI code will still reside in `utils`)
 - The `src/recipes` folder is for recipes that are used by the `experimental convert` command. They are written in plain English and are mostly a list of examples. See the `AsyncStorage-to-mmkv` recipe for an example.
 - Keep source files small. This means a lot of small files will be created, but that's okay. This helps us build Flame AI using Flame AI. :-)
+- Add local types to the top of files, and exported types to `src/types.ts`. Bias toward `type` over `interface`.

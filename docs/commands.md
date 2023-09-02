@@ -22,6 +22,21 @@ Here's the command with all available options:
 npx flame upgrade react-native --interactive --from=0.72.2 --to=auto --list --only=somefile.mm
 ```
 
+Options:
+
+- `--interactive`: Run in interactive mode. This is the most useful mode.
+- `--from=[auto|<version>]`: The version to upgrade from. Defaults to the version specified in `package.json`.
+- `--to=[auto|<version>]`: The version to upgrade to. Defaults to the latest version of React Native on NPM.
+- `--list`: List the files that will be upgraded and exit.
+- `--only=filename`: Only upgrade the specified file (or any filename that includes this string).
+- `--debug`: Print verbose debug information as the upgrade runs.
+
+Hints:
+
+- Interactive mode is the most useful. It will ask you questions and guide you through the upgrade process.
+- If a file has moved, we are not currently able to find it nor move it for you. You'll need to move it manually or upgrade moved files manually. In the future, we will add ways to find those files either manually or automatically.
+- If you've customized some files extensively, you may need to manually apply the changes. Over time, Flame AI will get better at handling these cases.
+
 ## EXPERIMENTAL: Interactive Code Editing and Authoring Mode
 
 The interactive mode is one of Flame's most exciting features, but it's still **very much a work in progress.** It allows you to chat with the AI, load files, list files, and make modifications to code using plain English.

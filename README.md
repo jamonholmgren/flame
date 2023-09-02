@@ -2,6 +2,8 @@
 
 Flame AI is our CLI for interacting with OpenAI and doing codemods and codegen. It includes an interactive mode and several other specialized commands.
 
+<img alt="Flame AI screenshot" src="https://github.com/infinitered/flame/assets/1479215/68784ba3-4526-4312-8dcc-35741ebf1a0e">
+
 To run it, you need Node v18+ installed and have access to an OpenAI [gpt-4 token key](https://platform.openai.com/account/api-keys). If you need access to gpt-4, [here's how to get it](https://help.openai.com/en/articles/7102672-how-can-i-access-gpt-4).
 
 ```
@@ -9,6 +11,8 @@ npx flame --help
 ```
 
 ## Commands
+
+To see all commands, including some exciting experimental features, check out the [Command Reference](docs/commands.md).
 
 ### Upgrade: React Native
 
@@ -29,8 +33,6 @@ Here's the command with all available options:
 ```
 npx flame upgrade react-native --interactive --from=0.72.2 --to=auto --list --only=somefile.mm
 ```
-
-To see all commands, including some exciting experimental features, check out the [Command Reference](docs/commands.md).
 
 ## Philosophy
 
