@@ -28,4 +28,4 @@ ${cyan(`For more information, visit https://github.com/infinitered/flame.`)}
   },
 }
 
-module.exports = command
+export default command

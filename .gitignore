@@ -1,5 +1,6 @@
 .DS_Store
 node_modules
+.yarn
 npm-debug.log
 coverage
 .nyc_output

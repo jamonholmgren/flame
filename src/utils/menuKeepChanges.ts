@@ -2,7 +2,7 @@ import { print, prompt, filesystem } from 'gluegun'
 import type { FileData } from '../types'
 import type { ChatCompletionFunctionResult } from '../types'
 import { deleteCachedResponse } from './persistCache'
-import { coloredDiff } from './coloredDiff'
+// import { coloredDiff } from './coloredDiff'
 
 type KeepChangesOptions = {
   result: ChatCompletionFunctionResult
@@ -15,13 +15,9 @@ type KeepChangesResult = 'next' | 'retry' | 'changes' | 'diff' | 'removeCache' |
 export async function menuKeepChanges({ result, fileData, options }: KeepChangesOptions) {
   if (result.changes.split('\n').length === 0) {
     print.info(`⇾ No changes made to file.\n`)
-  } else if (result.changes.split('\n').length <= 30) {
-    print.info(result.changes + '\n')
   } else {
-    print.info(`⇾ Many changes made to file -- choose "See all changes" to see them.`)
-    print.info(`  Or check your code editor (probably easier)\n`)
+    print.info(result.changes + '\n')
   }
-  print.info('\n')
 
   let keepChanges: KeepChangesResult = undefined
   while (true) {
@@ -32,8 +28,9 @@ export async function menuKeepChanges({ result, fileData, options }: KeepChanges
       choices: [
         { name: 'next', message: 'Looks good! Next file please' },
         { name: 'retry', message: 'Try again (and ask me for advice)' },
-        { name: 'changes', message: 'See all changes to file' },
-        { name: 'diff', message: 'See original diff again' },
+        // Since we're always showing the changes/diff, we might not need these options?
+        // { name: 'changes', message: 'See all changes to file' },
+        // { name: 'diff', message: 'See original diff again' },
         ...(options.cacheFile ? [{ name: 'removeCache', message: 'Remove cache for this file' }] : []),
         { name: 'skip', message: 'Skip this file (undo changes)' },
         { name: 'keepExit', message: 'Exit (keep changes to this file)' },
@@ -49,15 +46,17 @@ export async function menuKeepChanges({ result, fileData, options }: KeepChanges
       continue
     }
 
-    if (keepChanges === 'changes') {
-      print.info('\n' + result.changes + '\n')
-      continue
-    }
+    // Removed these options for now; if we need them, we can add them back
 
-    if (keepChanges === 'diff') {
-      print.info('\n' + coloredDiff(fileData.diff) + '\n')
-      continue
-    }
+    // if (keepChanges === 'changes') {
+    //   print.info('\n' + result.changes + '\n')
+    //   continue
+    // }
+
+    // if (keepChanges === 'diff') {
+    //   print.info('\n' + coloredDiff(fileData.diff) + '\n')
+    //   continue
+    // }
 
     break
   }
