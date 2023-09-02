@@ -6,6 +6,8 @@ Flame AI is a CLI built using [Gluegun](https://github.com/infinitered/gluegun),
 
 Flame AI has a command for upgrading React Native apps. This is the most mature command in Flame AI and is used in production by [Infinite Red](https://infinite.red).
 
+<img alt="Flame AI React Native upgrade" src="https://github.com/infinitered/flame/assets/1479215/d29abe33-1eeb-45af-92be-681b7303d340">
+
 Run this in the root of your React Native app (where the `package.json` and `app.json` live):
 
 ```
