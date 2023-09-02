@@ -1,26 +1,18 @@
-# Flame CLI
+# Flame AI 🔥
 
-Flame is our CLI for interacting with OpenAI and doing codemods and codegen. It includes an interactive mode and several other specialized commands.
+Flame AI is our CLI for interacting with OpenAI and doing codemods and codegen. It includes an interactive mode and several other specialized commands.
 
-For running locally, after cloning it down:
-
-```
-yarn
-yarn link
-export OPENAI_API_KEY=sk-HERE
-export OPENAI_ORGANIZATION=org-HERE # optional
-flame --help
-```
-
-For running normally:
+To run it, you need Node v18+ installed and have access to an OpenAI [gpt-4 token key](https://platform.openai.com/account/api-keys). If you need access to gpt-4, [here's how to get it](https://help.openai.com/en/articles/7102672-how-can-i-access-gpt-4).
 
 ```
 npx flame --help
 ```
 
-## Upgrade: React Native
+## Commands
 
-Flame AI has a command for upgrading React Native apps.
+### Upgrade: React Native
+
+Flame AI's most effective command is for upgrading React Native apps.
 
 Run this in the root of your React Native app:
 
@@ -38,38 +30,34 @@ Here's the command with all available options:
 npx flame upgrade react-native --interactive --from=0.72.2 --to=auto --list --only=somefile.mm
 ```
 
-## EXPERIMENTAL: Interactive Code Editing and Authoring Mode
-
-The interactive mode is one of Flame's most exciting features, but it's still very much a work in progress. It allows you to chat with the AI, load files, list files, and make modifications to code using plain English.
-
-To start the interactive mode, run `flame interactive`. The current directory will be where you will be working. You can also specify a directory to work in by running `flame interactive <directory>`.
-
-In the interactive mode, you can use the following special commands:
-
-- `/exit`: Exit the interactive mode.
-- `/log`: Print the current chat log.
-- `/context`: Print the current context.
-- `/context.smart`: Make a smart backchat from the current context and display it for debugging.
-- `/clear`: Clear the chat log.
-- `/clearlast`: Clear the last message from the chat log.
-- `/load <filename>`: Load a file's contents. Useful for evaluating and changing code.
-- `/ls <path>`: Load a list files in the specified path. Helps the AI understand what files are available.
-- `/logcompress <number>`: Compress the chat log to a specified character count to avoid token limits. It'll automatically compress the log when it gets too long, but you can also do it manually. e.g. `logcompress 5000`. Note these are characters and not tokens.
-- `/debug`: Print a full list of interactions, mostly for debugging issues.
+To see all commands, including some exciting experimental features, check out the [Command Reference](docs/commands.md).
 
 ## Philosophy
 
-The philosophy behind Flame is that you should be able to tell it to make changes to your code in plain English, and it can create a plan and actually make those changes to your code, writing very good code that matches the rest of your project.
+AI (specifically large language models like OpenAI's ChatGPT) is a powerful tool. Flame AI is built to be a minimalist CLI that brings a great developer experience and useful tools for making code modifications (codemods) and code generation.
 
-## File Structure
+Given that [Infinite Red](https://infinite.red) is a React Native consultancy, the bulk of the built-in tools for Flame will be tuned for React Native development; however, the CLI is built to be extensible and we welcome contributions from the community.
 
-Like most Gluegun apps, the commands live in `src/commands` and there are utility functions in `src/utils`. There's also a bunch of ai related functionality in `src/ai``.
+## A note about costs
+
+Note that Flame AI costs a nominal amount of money to run, via OpenAI's API pricing. In our experiments, running a full React Native upgrade will cost about $0.05 USD or less. We frequently hit around $5 per day total cost when testing it over and over during a full work day. You must ensure you watch the CLI while it's working to ensure it doesn't get stuck in a loop and run up your bill. We are not responsible for any costs incurred by using Flame AI. We don't want those bills either, so we are regularly adding features and checks to avoid these sorts of issues. At this point, running Flame AI in an automated / unmonitored fashion is not recommended.
+
+## Limitations
+
+- You _must_ have gpt-4 access for Flame AI to be useful. Our experiments with gpt-3.5-turbo have been very underwhelming.
+- **The biggest limitation for FlameAI is the lack of prompt size.** Currently, we're working with gpt-4, which has a token size of 8192 tokens (around 24k characters). This sounds like a lot, but considering a single code file of 200 lines can take up north of 10k characters, it is very limiting. When we have access to gpt-4-32k, we'll be able to do much more. Despite that, we've made impressive progress with the current token size.
+- LLMs are not perfect. They can hallucinate, miss stuff, and be generally weird. We're working on ways to mitigate this, but it's a limitation of the technology.
+- LLMs are not magic. They can't do everything. They're not a replacement for human developers. They're a tool to help developers be more productive.
+
+## Contributing, modifying, running locally
+
+See the [Contributing Guide](docs/contributing.md).
 
 ## Get Help
 
 If you have questions, concerns, bug reports, etc, please file an issue in this repository's Issue Tracker.
 
-Feel free to join our community Slack and join the #flame-ai-cli channel here: [https://community.infinite.red](https://community.infinite.red)
+Feel free to join our community Slack and join the #flame-ai-cli channel here: [https://community.infinite.red](https://community.infinite.red).
 
 # License
 
