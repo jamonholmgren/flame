@@ -29,6 +29,7 @@ Options:
 - `--to=[auto|<version>]`: The version to upgrade to. Defaults to the latest version of React Native on NPM.
 - `--list`: List the files that will be upgraded and exit.
 - `--only=filename`: Only upgrade the specified file (or any filename that includes this string).
+- `--cacheFile=./path/to/cache.json`: Specify a cache file to use, which stores OpenAI requests and responses. This is mainly useful for demos and testing when you don't want to hit the OpenAI API every time. Not recommended for production use.
 - `--debug`: Print verbose debug information as the upgrade runs.
 
 Hints:
