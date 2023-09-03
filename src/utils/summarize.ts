@@ -10,7 +10,7 @@ export function summarize(summary: FileData[]) {
   const skipped = summary.filter((f) => f.change === 'skipped')
   const ignored = summary.filter((f) => f.change === 'ignored')
   const pending = summary.filter((f) => f.change === 'pending')
-  const errors = summary.filter((f) => f.error)
+  const errors = summary.filter((f) => f.change === 'error')
 
   hr()
   print.info(bold(white(`Summary\n`)))

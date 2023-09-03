@@ -47,10 +47,12 @@ export async function upgradeFile({ fileData, options, currentVersion, targetVer
   br()
 
   // check if the user wants to convert the next file or skip this file
-  print.info(white('Upgrade Helper diff:\n\n') + coloredDiff(fileData.diff) + '\n')
-  const suMenu = options.interactive ? await menuSkipOrUpgrade(fileData) : { next: 'upgrade' }
-  if (suMenu?.next === 'skip') return { userWantsToExit: false }
-  if (suMenu?.next === 'exit') return { userWantsToExit: true }
+  if (options.interactive) {
+    print.info(white('Upgrade Helper diff:\n\n') + coloredDiff(fileData.diff) + '\n')
+    const suMenu = await menuSkipOrUpgrade(fileData)
+    if (suMenu?.next === 'skip') return { userWantsToExit: false }
+    if (suMenu?.next === 'exit') return { userWantsToExit: true }
+  }
 
   const { orientation, convertPrompt, admonishments } = createUpgradeRNPrompts({
     from: currentVersion,
@@ -83,7 +85,7 @@ export async function upgradeFile({ fileData, options, currentVersion, targetVer
     if (aiResponse) {
       // delay briefly to simulate a real request
       await new Promise((resolve) => setTimeout(resolve, 2500))
-      stop('🔥', `Using cached response for ${fileData.path}`)
+      log(`Using cached response for ${fileData.path}`)
     } else {
       aiResponse = await chatGPTPrompt({ functions, messages, model: 'gpt-4' })
 

@@ -70,7 +70,7 @@ export type CLIOptions = {
 export type FileData = {
   path: string
   diff: string
-  change: 'pending' | 'created' | 'modified' | 'deleted' | 'skipped' | 'ignored'
+  change: 'pending' | 'created' | 'modified' | 'deleted' | 'skipped' | 'ignored' | 'error'
   error?: string
   customPrompts: string[]
 }
