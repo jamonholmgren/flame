@@ -9,6 +9,7 @@ import { isFileIgnored } from '../../utils/isFileIgnored'
 import { upgradeFile } from '../../react-native/upgradeRNFile'
 import { CLIOptions } from '../../types'
 import { helpUpgradeRN } from '../../utils/helpUpgradeRN'
+import { checkOpenAIKey } from '../../ai/openai/openai'
 
 const ignoreFiles = [
   'README.md',
@@ -23,6 +24,8 @@ const command: GluegunCommand = {
     const options = parameters.options as CLIOptions
     const { colors } = print
     const { red, cyan, white, bold } = colors
+
+    checkOpenAIKey()
 
     // Retrieve the path of the folder to upgrade, default current folder.
     const dir = parameters.first || './'

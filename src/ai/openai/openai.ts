@@ -1,3 +1,4 @@
+import type { AxiosResponse } from 'axios'
 import {
   ChatCompletionResponseMessage,
   Configuration,
@@ -5,8 +6,7 @@ import {
   CreateChatCompletionResponse,
   OpenAIApi,
 } from 'openai'
-import { prompt } from '../../utils/prompt'
-import { AxiosResponse } from 'axios'
+import { print } from 'gluegun'
 
 let _openAI: OpenAIApi | null = null
 export async function openAI() {
@@ -18,10 +18,6 @@ export async function openAI() {
       throw new Error(
         'OpenAI API Key not found. Please set your OpenAI key as an environment variable. Refer to the README for instructions.'
       )
-    }
-    if (!api_key) {
-      console.log('Please enter your OpenAI API key:')
-      api_key = await prompt('OpenAI API Key: ')
     }
 
     _openAI = new OpenAIApi(new Configuration({ apiKey: api_key, organization }))
@@ -91,5 +87,13 @@ export async function createEmbedding(text: string) {
 }
 
 export function checkOpenAIKey() {
-  return process.env.OPENAI_API_KEY !== undefined
+  if (process.env.OPENAI_API_KEY !== undefined) return true
+
+  print.info('')
+  print.error(`Oops -- didn't find an OpenAI key.\n`)
+  print.info(print.colors.gray('Please export your OpenAI key as an environment variable.\n'))
+  print.highlight('export OPENAI_API_KEY=key_goes_here\n')
+  print.info('Get a key here: https://platform.openai.com/account/api-keys')
+  print.info('Get access to OpenAI here: https://help.openai.com/en/articles/7102672-how-can-i-access-gpt-4')
+  process.exit(1)
 }

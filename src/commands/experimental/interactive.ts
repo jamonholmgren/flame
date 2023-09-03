@@ -36,14 +36,7 @@ const command: GluegunCommand = {
     const { colors } = print
     const { gray } = colors
 
-    if (!checkOpenAIKey()) {
-      print.info('')
-      print.error(`Oops -- didn't find an OpenAI key.\n`)
-      print.info(gray('Please export your OpenAI key as an environment variable.\n'))
-      print.highlight('export OPENAI_API_KEY=key_goes_here\n')
-      print.info('Get the key here: https://platform.openai.com/account/api-keys')
-      process.exit(1)
-    }
+    checkOpenAIKey()
 
     print.highlight('\nWelcome to Flame CLI Interactive Mode!\n')
     print.info(gray('Type /help for a list of commands.\n'))
