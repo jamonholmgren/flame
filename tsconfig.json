@@ -3,7 +3,7 @@
     "allowSyntheticDefaultImports": false,
     "experimentalDecorators": true,
     "lib": ["es2020", "dom"],
-    "types": ["node"],
+    "types": ["node", "jest"],
     "module": "commonjs",
     "moduleResolution": "node",
     "noImplicitAny": false,
