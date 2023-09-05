@@ -5,7 +5,7 @@ import { createEmbedding } from '../../ai/openai/openai'
 export async function loadFile(
   fileName: string,
   context: SmartContext
-): Promise<{ file: ProjectFile | undefined; contents: string }> {
+): Promise<{ file: ProjectFile | undefined; contents: string } | undefined> {
   const path = filesystem.path(`${context.workingFolder}/${fileName}`)
 
   // get the existing file from the context if it exists

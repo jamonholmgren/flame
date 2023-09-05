@@ -53,7 +53,7 @@ export type ChatCompletionFunctionResult = {
 }
 
 export type ChatCompletionFunction = ChatCompletionFunctions & {
-  fn: (args: unknown, context?: SmartContext) => Promise<ChatCompletionFunctionResult>
+  fn: (args: any, context?: SmartContext) => Promise<ChatCompletionFunctionResult>
 }
 
 export type CLIOptions = {

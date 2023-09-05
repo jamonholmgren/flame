@@ -1,5 +1,5 @@
+import type { ChatCompletionFunction } from '../../../types'
 import { filesystem, print } from 'gluegun'
-import { ChatCompletionFunction } from '../../../types'
 
 type DeleteFileArgs = {
   path: string

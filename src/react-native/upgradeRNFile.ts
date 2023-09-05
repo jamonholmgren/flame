@@ -102,9 +102,21 @@ export async function upgradeFile({ fileData, options, currentVersion, targetVer
     log({ aiResponse })
 
     const functionName = aiResponse?.function_call?.name
+    if (!functionName) {
+      print.error(`🛑 Error: No function name found in response.`)
+      print.error(`   ${JSON.stringify(aiResponse, null, 2)}`)
+      const cont = options.interactive ? await prompt.confirm('Try again?') : false
+      if (cont) continue
+
+      // skip this file
+      fileData.change = 'skipped'
+      fileData.error = 'no function name found'
+      return { userWantsToExit: false }
+    }
+
     try {
       var functionArgs = JSON.parse(aiResponse?.function_call?.arguments || '{}')
-    } catch (e) {
+    } catch (e: any) {
       print.error(`🛑 Error parsing function arguments: ${e.message}`)
       print.error(`   ${aiResponse?.function_call?.arguments}`)
 
@@ -126,6 +138,17 @@ export async function upgradeFile({ fileData, options, currentVersion, targetVer
     if (fnResult.doneWithFile || !options.interactive) return { userWantsToExit: false }
 
     const result = fnResult.result
+    if (!result) {
+      print.error(`🛑 Error: No result found in response.`)
+      print.error(`   ${JSON.stringify(aiResponse, null, 2)}`)
+      const cont = await prompt.confirm('Try again?')
+      if (cont) continue
+
+      // skip this file
+      fileData.change = 'skipped'
+      fileData.error = 'no result found'
+      return { userWantsToExit: false }
+    }
 
     // interactive mode allows the user to undo the changes and give more instructions
     const keepChanges = await menuKeepChanges({ result, fileData, options })
@@ -136,7 +159,7 @@ export async function upgradeFile({ fileData, options, currentVersion, targetVer
     if (keepChanges === 'keepExit') return { userWantsToExit: true }
 
     if (keepChanges === 'skip' || keepChanges === 'undoExit') {
-      await result.undo()
+      if (result.undo) await result.undo()
       br()
       print.info(`↺  Changes to ${fileData.path} undone.`)
       fileData.change = 'skipped'
@@ -146,7 +169,7 @@ export async function upgradeFile({ fileData, options, currentVersion, targetVer
 
     if (keepChanges === 'retry') {
       await retryGetAdvice(fileData)
-      await result.undo()
+      if (result.undo) await result.undo()
       if (options.cacheFile) await deleteCachedResponse(options.cacheFile, fileData.path)
     } else {
       // This really should never happen

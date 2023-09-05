@@ -1,5 +1,7 @@
 # Contributing
 
+Flame AI is designed to be easy to contribute to. It's built on top of [Gluegun](https://github.com/infinitered/gluegun), which is a popular node CLI framework also built by [Infinite Red](https://infinite.red).
+
 ## Get Started
 
 1. Clone this repo or your fork (`git clone git@github.com:infinitered/flame.git`)
@@ -9,7 +11,7 @@
 
 ## Architecture
 
-Like most Gluegun apps, the commands live in `src/commands` and there are utility functions in `src/utils`. There's also a bunch of ai related functionality in `src/ai`. There are a few React Native specific features in `src/react-native`. Exported types are in `src/types.ts`.
+Like most Gluegun command-line apps, the commands live in `src/commands` and there are utility functions in `src/utils`. There's also a bunch of ai related functionality in `src/ai`. There are a few React Native specific features in `src/react-native`. Exported types are in `src/types.ts`.
 
 ## Contributing Tips (note this can change as the project evolves):
 

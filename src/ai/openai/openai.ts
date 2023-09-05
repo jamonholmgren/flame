@@ -44,9 +44,9 @@ export const chatGPTPrompt = async (
   let response: AxiosResponse<CreateChatCompletionResponse, any>
   try {
     response = await ai.createChatCompletion(mergedOptions)
-  } catch (e) {
+  } catch (e: any) {
     // Check for 429 rate limit
-    if (e.response?.status === 429) {
+    if (e?.response?.status === 429) {
       return {
         content: `ERROR: I'm sorry, I'm being rate limited. Please try again in a few minutes.\n\ncode: too_many_requests\n`,
         role: 'assistant',
@@ -72,7 +72,13 @@ export const chatGPTPrompt = async (
     }
   }
 
-  return response.data.choices[0].message
+  const message = response.data.choices[0].message
+  if (message) return message
+
+  return {
+    content: `ERROR: I'm sorry, I had an error. Please try again.\n\ncode: unknown_error\n`,
+    role: 'assistant',
+  }
 }
 
 export async function createEmbedding(text: string) {

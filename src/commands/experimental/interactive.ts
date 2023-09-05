@@ -55,7 +55,7 @@ const command: GluegunCommand = {
         spinner.succeed('Chat history loaded.\n')
 
         print.info(`Project description: ${gray(context.project)}\n`)
-        print.info(`Task: ${gray(context.currentTask)}\n`)
+        print.info(`Task: ${gray(context.currentTask || 'Unknown')}\n`)
       } catch (error) {
         spinner.fail('Failed to load chat history.')
       }
@@ -117,10 +117,15 @@ const command: GluegunCommand = {
       // if the prompt starts with "load ", load a file into the prompt
       if (result.chatMessage.startsWith('/load ')) {
         const fileName = result.chatMessage.slice(5)
-        const { file } = await loadFile(fileName, context)
+        const loadedFile = await loadFile(fileName, context)
 
-        if (file) {
-          print.info(`Loaded ${fileName} (${file.length} characters)`)
+        if (!loadedFile) {
+          print.error(`Could not find ${fileName}.`)
+          continue
+        }
+
+        if (loadedFile.file) {
+          print.info(`Loaded ${fileName} (${loadedFile.file.length} characters)`)
         } else {
           print.error(`Could not find ${fileName}.`)
         }

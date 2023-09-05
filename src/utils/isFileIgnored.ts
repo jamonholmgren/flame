@@ -3,7 +3,7 @@ import { print } from 'gluegun'
 
 type IsFileIgnoredProps = {
   ignoreFiles: string[]
-  only: string
+  only?: string
   fileData: FileData
 }
 

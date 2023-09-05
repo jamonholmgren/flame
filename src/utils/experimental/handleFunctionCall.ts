@@ -9,10 +9,15 @@ export async function handleFunctionCall(
   functions: AIFunctions,
   context: SmartContext
 ) {
-  const functionName = response.function_call.name
+  const functionName = response.function_call?.name
+
+  if (!functionName) {
+    return { error: `No function name found in response.` }
+  }
+
   let functionArgs
   try {
-    functionArgs = JSON.parse(response.function_call.arguments)
+    functionArgs = JSON.parse(response.function_call?.arguments || '{}')
   } catch (error) {
     console.error(`Error parsing function arguments: ${error}`)
     return { error: `Error parsing function arguments: ${error}` }

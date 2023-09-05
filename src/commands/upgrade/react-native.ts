@@ -48,6 +48,14 @@ const command: GluegunCommand = {
     const appInfo = await fetchRNAppInfo({ dir, options })
     if (appInfo.error) return stop('🙈', appInfo.error)
     const { currentVersion, targetVersion, replacePlaceholder } = appInfo
+
+    if (!currentVersion || !targetVersion) {
+      return stop(
+        '🙈',
+        `Could not determine current or target version. Please make sure you are in a React Native project folder and try again.`
+      )
+    }
+
     hide()
 
     info('Current:', bold(currentVersion))
@@ -56,6 +64,9 @@ const command: GluegunCommand = {
     spin('Fetching upgrade diff')
     const { files, error: diffError } = await fetchRNDiff({ currentVersion, targetVersion })
     if (diffError) return stop('🙈', diffError)
+    if (!files || files.length === 0) {
+      return stop('🙈', `Could not find any files to upgrade. Please try again.`)
+    }
     hide()
 
     // update the path and diff with the placeholder values

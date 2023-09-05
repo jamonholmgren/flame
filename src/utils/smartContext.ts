@@ -30,13 +30,13 @@ export async function createSmartContextBackchat(context: SmartContext): Promise
   if (paths.length > 0) {
     const pathsWithRelevancy = paths
       .map((p) => {
-        const rel = Math.floor(relevantFiles.find((f) => f.file.path === p)?.similarity * 100)
+        const rel = Math.floor((relevantFiles?.find((f) => f.file.path === p)?.similarity || 0) * 100)
         if (!rel) return
         return { content: `${p} (${rel}%)`, rel }
       })
       .filter((p) => p)
-      .sort((a, b) => b.rel - a.rel)
-      .map((p) => p.content)
+      .sort((a, b) => b!.rel - a!.rel)
+      .map((p) => p!.content)
 
     backchat.push({
       content: `These are the files that seem relevant to the current task (and % relevant):\n${pathsWithRelevancy.join(
@@ -51,7 +51,7 @@ export async function createSmartContextBackchat(context: SmartContext): Promise
 
   // let's add all the most relevant files up to the limit
   const relevantFilesToUse = relevantFiles.filter((f) => {
-    totalFileCharacterCount += Math.min(f.file.length, FILE_LENGTH_LIMIT)
+    totalFileCharacterCount += Math.min(f.file.length!, FILE_LENGTH_LIMIT)
     return totalFileCharacterCount < TOTAL_FILE_LENGTH_LIMIT
   })
 
@@ -68,7 +68,7 @@ export async function createSmartContextBackchat(context: SmartContext): Promise
       if (!isReadFile) continue
 
       // we have a file read function, so we'll add the file contents ... if relevant to the current task
-      const filepath = JSON.parse(message.function_call.arguments).path
+      const filepath = JSON.parse(message.function_call?.arguments || '{}').path
       const file = context.files[filepath]
 
       // check if it's one of the relevant files we have budget to show
@@ -121,13 +121,13 @@ export async function createSmartContextBackchat(context: SmartContext): Promise
       let fileContent = await filesystem.readAsync(file.path)
 
       // truncate individual files if over FILE_LENGTH_LIMIT
-      if (fileContent.length > FILE_LENGTH_LIMIT) {
-        fileContent = `${fileContent.slice(0, FILE_LENGTH_LIMIT)}\n\n... (truncated)`
+      if (fileContent?.length! > FILE_LENGTH_LIMIT) {
+        fileContent = `${String(fileContent).slice(0, FILE_LENGTH_LIMIT)}\n\n... (truncated)`
       }
 
       backchat.push({
         role: 'assistant',
-        content: null,
+        content: undefined,
         function_call: {
           name: 'readFileAndReportBack',
           arguments: JSON.stringify({ path: file.path }),

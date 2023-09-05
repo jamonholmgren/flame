@@ -1,5 +1,5 @@
+import type { ChatCompletionFunction } from '../../../types'
 import { filesystem } from 'gluegun'
-import { ChatCompletionFunction } from '../../../types'
 import { uglyDiff } from '../../../utils/uglyDiff'
 
 type PatchInstruction = { insert: string; replace: string }
@@ -36,13 +36,17 @@ export const patch: ChatCompletionFunction = {
   fn: async (args: { file: string; instructions: PatchInstruction[] }) => {
     const { file, instructions } = args
 
-    const undos = []
-    const changes = []
+    const undos: Function[] = []
+    const changes: string[] = []
 
     for (let instruction of instructions) {
       const { insert, replace } = instruction
 
       const fileContents = await filesystem.readAsync(file, 'utf8')
+
+      if (fileContents === undefined) {
+        return { error: `File '${file}' does not exist.` }
+      }
 
       const { diff, replaceIndex } = uglyDiff(file, fileContents, replace, insert)
 

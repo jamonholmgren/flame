@@ -1,6 +1,6 @@
 # Flame AI 🔥
 
-Flame AI is our CLI for interacting with OpenAI and doing codemods and codegen. It includes an interactive mode and several other specialized commands.
+Flame AI is a CLI for interacting with OpenAI and doing codemods and codegen. It includes an interactive mode and several other specialized commands.
 
 <img alt="Flame AI screenshot" src="https://github.com/infinitered/flame/assets/1479215/68784ba3-4526-4312-8dcc-35741ebf1a0e">
 
@@ -44,14 +44,13 @@ Given that [Infinite Red](https://infinite.red) is a React Native consultancy, t
 
 ## A note about costs
 
-Note that Flame AI costs a nominal amount of money to run, via OpenAI's API pricing. In our experiments, running a full React Native upgrade will cost about $0.05 USD or less. We frequently hit around $5 per day total cost when testing it over and over during a full work day. You must ensure you watch the CLI while it's working to ensure it doesn't get stuck in a loop and run up your bill. We are not responsible for any costs incurred by using Flame AI. We don't want those bills either, so we are regularly adding features and checks to avoid these sorts of issues. At this point, running Flame AI in an automated / unmonitored fashion is not recommended.
+Note that Flame AI costs a nominal amount of money to run, via [OpenAI's API pricing](https://openai.com/pricing). In our experiments, running a full React Native upgrade will cost about $0.05 USD or less. We frequently hit around $5 per day total cost when testing it over and over during a full work day. You must ensure you watch the CLI while it's working to ensure it doesn't get stuck in a loop and run up your bill. We are not responsible for any costs incurred by using Flame AI. We don't want those bills either, so we are regularly adding features and checks to avoid these sorts of issues. At this point, running Flame AI in an automated / unmonitored fashion is not recommended.
 
 ## Limitations
 
 - You _must_ have gpt-4 access for Flame AI to be useful. Our experiments with gpt-3.5-turbo have been very underwhelming.
 - **The biggest limitation for FlameAI is the lack of prompt size.** Currently, we're working with gpt-4, which has a token size of 8192 tokens (around 24k characters). This sounds like a lot, but considering a single code file of 200 lines can take up north of 10k characters, it is very limiting. When we have access to gpt-4-32k, we'll be able to do much more. Despite that, we've made impressive progress with the current token size.
-- LLMs are not perfect. They can hallucinate, miss stuff, and be generally weird. We're working on ways to mitigate this, but it's a limitation of the technology.
-- LLMs are not magic. They can't do everything. They're not a replacement for human developers. They're a tool to help developers be more productive.
+- LLMs are not perfect. They can hallucinate, miss stuff, and be generally weird. We're working on ways to mitigate this, but it's a limitation of current generation AI technology.
 
 ## Contributing, modifying, running locally
 

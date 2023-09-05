@@ -3,25 +3,30 @@ import { ChatCompletionFunctions } from 'openai'
 import { listFiles } from '../utils/experimental/listFiles'
 import { SmartContext } from '../types'
 
+type ChatCompletionFunctionResponse = {
+  file?: string
+  content?: string
+  resubmit?: boolean
+  patches?: {
+    findLine: string
+    replaceLine: string
+  }[]
+  error?: string
+}
+
 type ChatCompletionFunction = ChatCompletionFunctions & {
-  fn: (
-    args: unknown,
-    context: SmartContext
-  ) => Promise<{
-    content?: string
-    resubmit?: boolean
-    patches?: {
-      findLine: string
-      replaceLine: string
-    }[]
-    error?: string
-  }>
+  fn: (args: any, context: SmartContext) => Promise<ChatCompletionFunctionResponse>
 }
 
 type ContextUpdaterArgs = {
   newProjectDescription?: string
   newTaskDescription?: string
 }
+
+type PatchLinesArgs = {
+  file: string
+  instructions: { findLine: string; replaceLine: string }[]
+} & ContextUpdaterArgs
 
 const contextUpdaterFunctions = {
   newProjectDescription: {
@@ -83,13 +88,7 @@ export const aiFunctions: ChatCompletionFunction[] = [
       },
       required: ['file', 'instructions'],
     },
-    fn: async (
-      args: {
-        file: string
-        instructions: { findLine: string; replaceLine: string }[]
-      } & ContextUpdaterArgs,
-      context
-    ) => {
+    fn: async (args: PatchLinesArgs, context) => {
       const { file, instructions } = args
 
       let content = updateProjectAndTask(args, context)
@@ -100,7 +99,7 @@ export const aiFunctions: ChatCompletionFunction[] = [
       }
 
       // construct a response
-      let response = {
+      let response: ChatCompletionFunctionResponse = {
         content,
         file,
         patches: [],
@@ -113,16 +112,16 @@ export const aiFunctions: ChatCompletionFunction[] = [
         return { error: `File '${file}' does not exist.` }
       }
 
-      for (let instruction of instructions) {
+      instructions.forEach((instruction) => {
         const { findLine, replaceLine } = instruction
 
         // Replace the string
-        if (fileContents.includes(findLine)) {
+        if (fileContents && fileContents.includes(findLine)) {
           fileContents = fileContents.replace(findLine, replaceLine)
           // increment the number of patches
-          response.patches.push({ findLine, replaceLine })
+          if (response.patches) response.patches.push({ findLine, replaceLine })
         }
-      }
+      })
 
       // Write the file
       await filesystem.writeAsync(file, fileContents)
@@ -221,6 +220,10 @@ export const aiFunctions: ChatCompletionFunction[] = [
       // List the files
 
       const files = await listFiles(args.path, context)
+
+      if (!files) {
+        return { error: `No files found at path: ${args.path}` }
+      }
 
       content += `Found ${files.length} at path: ${args.path}\n`
 

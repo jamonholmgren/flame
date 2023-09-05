@@ -12,7 +12,7 @@ export function mostRelevantFiles(context: SmartContext, minSimilarity = 0.8) {
       if (file.path === context.currentFile) return { file, similarity: 1 }
 
       // check its relevancy
-      if (file.embeddings) {
+      if (file.embeddings && context.currentTaskEmbeddings) {
         // if it has embeddings, we'll check the cosine similarity
         const similarity = cosineSimilarity(context.currentTaskEmbeddings, file.embeddings)
         return { file, similarity }

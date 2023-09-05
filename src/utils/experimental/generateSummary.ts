@@ -14,5 +14,5 @@ export async function generateSummary(preprompt: string, text: string): Promise<
     model: 'gpt-3.5-turbo',
   })
 
-  return response.content
+  return response.content || 'Unable to generate summary.'
 }

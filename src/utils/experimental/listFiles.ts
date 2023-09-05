@@ -22,7 +22,7 @@ export async function listFiles(
   // if there are no files, return undefined
   if (!files || files.length === 0) return undefined
 
-  let allFiles = []
+  let allFiles: string[] = []
 
   // add the files to the context if they don't already exist
   for (let file of files) {

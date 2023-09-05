@@ -13,13 +13,13 @@ type KeepChangesOptions = {
 type KeepChangesResult = 'next' | 'retry' | 'changes' | 'diff' | 'removeCache' | 'skip' | 'keepExit' | 'undoExit'
 
 export async function menuKeepChanges({ result, fileData, options }: KeepChangesOptions) {
-  if (result.changes.split('\n').length === 0) {
+  if (result?.changes?.split('\n').length === 0) {
     print.info(`⇾ No changes made to file.\n`)
   } else {
     print.info(result.changes + '\n')
   }
 
-  let keepChanges: KeepChangesResult = undefined
+  let keepChanges: KeepChangesResult
   while (true) {
     const keepChangesQuestion = await prompt.ask({
       type: 'select',
@@ -41,6 +41,11 @@ export async function menuKeepChanges({ result, fileData, options }: KeepChanges
     keepChanges = keepChangesQuestion.keepChanges as KeepChangesResult
 
     if (keepChanges === 'removeCache') {
+      if (!options.cacheFile) {
+        print.info(`\n⇾ No cache file specified.\n`)
+        continue
+      }
+
       await deleteCachedResponse(options.cacheFile, fileData.path)
       print.info(`\n↺  Cache removed for ${fileData.path}.\n`)
       continue

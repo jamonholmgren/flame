@@ -45,6 +45,11 @@ const command: GluegunCommand = {
     // get the third parameter as the source file
     const sourceFile = parameters.third
 
+    if (!sourceFile) {
+      print.error('You must specify a source file to convert.')
+      return
+    }
+
     // get lineChunks parameter
     const lineChunks = parameters.options.lineChunks ? parameters.options.lineChunks.split(',').map(Number) : undefined
 
@@ -56,6 +61,13 @@ const command: GluegunCommand = {
 
     // read the source file
     let sourceFileContents = await toolbox.filesystem.readAsync(sourceFile)
+
+    // check if the file exists
+    if (!sourceFileContents) {
+      spinner.fail()
+      print.error(`\nCould not find ${sourceFile}`)
+      return
+    }
 
     // update spinner
     spinner.succeed()
@@ -112,7 +124,7 @@ const command: GluegunCommand = {
         // functions, // TODO: important
         user: process.env.USER,
       })
-    } catch (e) {
+    } catch (e: any) {
       print.error(e)
       print.error(e.response.data.error)
       return
@@ -128,8 +140,19 @@ const command: GluegunCommand = {
     spinner.text = `Writing updated code to ${sourceFile}`
     spinner.start()
 
+    const message = response.data.choices[0].message
+    if (!message) {
+      print.error('Error or no response from OpenAI')
+      return
+    }
+
     // TODO: implement function calling!
-    const revampedCodeMessage = response.data.choices[0].message.content
+    const revampedCodeMessage = message.content
+
+    if (!revampedCodeMessage) {
+      print.error('No content found in message: ' + JSON.stringify(message))
+      return
+    }
 
     // strip any line that starts and ends with backticks
     const revampedCode = revampedCodeMessage.replace(/^```.*\n/gm, '').replace(/```.*\n$/gm, '')

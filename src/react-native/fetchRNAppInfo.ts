@@ -8,8 +8,8 @@ type FetchOptions = {
 
 export async function fetchRNAppInfo({ dir, options }: FetchOptions) {
   // Fetch the versions from the --from and --to options, or default to auto
-  let currentVersion = options.from || 'auto'
-  let targetVersion = options.to || 'auto'
+  let currentVersion = options!.from || 'auto'
+  let targetVersion = options!.to || 'auto'
 
   // Load up the package.json file from the provided folder path
   const packageJson = await filesystem.readAsync(`${dir}/package.json`, 'json')
@@ -24,6 +24,12 @@ export async function fetchRNAppInfo({ dir, options }: FetchOptions) {
   // Get the current version from package.json if auto
   if (currentVersion === 'auto') currentVersion = packageJson.dependencies['react-native']
 
+  if (!currentVersion) {
+    return {
+      error: `Couldn't find a react-native dependency in package.json.\nMake sure you're in the right folder or specify it with the --from=<version> option.`,
+    }
+  }
+
   // Get the target version from npm if auto
   if (targetVersion === 'auto') {
     const npmResponse = await http.create({ baseURL: 'https://registry.npmjs.org' }).get(`/react-native`)
@@ -33,9 +39,9 @@ export async function fetchRNAppInfo({ dir, options }: FetchOptions) {
 
   const appJson = await filesystem.readAsync(`${dir}/app.json`, 'json')
 
-  const appNameKebabCase = packageJson.name
-  const appDisplayName = appJson.displayName
-  const appNameLowercase = appDisplayName.toLowerCase()
+  const appNameKebabCase: string = packageJson.name || appJson.name
+  const appDisplayName: string = appJson.displayName
+  const appNameLowercase: string = appDisplayName.toLowerCase()
 
   const replacePlaceholder = (name: string) =>
     name
