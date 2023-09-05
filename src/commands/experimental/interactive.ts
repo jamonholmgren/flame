@@ -147,30 +147,30 @@ const command: GluegunCommand = {
         const backchat = await createSmartContextBackchat(context)
 
         const spinner = print.spin(thinking())
-        const response = await chatGPTPrompt({
+        const message = await chatGPTPrompt({
           functions: aiFunctions,
           messages: [initialPrompt, statusPrompt(context.workingFolder), ...backchat],
         })
         spinner.stop() // no need to show the spinner anymore
 
         // log the response for debugging
-        debugLog.push(response)
+        debugLog.push(message)
 
         // print and log the response content if there is any
-        if (response.content) {
+        if (message.content) {
           print.info(``)
-          print.highlight(`${response.content}`)
+          print.highlight(`${message.content}`)
           print.info(``)
         }
 
         // add the response to the chat log
-        context.messages.push(response)
+        context.messages.push(message)
 
         // handle function calls
-        if (!response.function_call) break // no function call, so we're done with this loop
+        if (!message.function_call) break // no function call, so we're done with this loop
 
         // if we have a function call, handle it
-        const functionCallResponse = await handleFunctionCall(response, aiFunctions, context)
+        const functionCallResponse = await handleFunctionCall(message, aiFunctions, context)
 
         debugLog.push(functionCallResponse)
 
@@ -180,7 +180,7 @@ const command: GluegunCommand = {
           context.messages.push({
             content: 'Error: ' + functionCallResponse.error,
             role: 'function',
-            name: response.function_call.name,
+            name: message.function_call.name,
           })
           break
         }

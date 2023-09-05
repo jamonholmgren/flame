@@ -7,6 +7,7 @@ import {
   OpenAIApi,
 } from 'openai'
 import { print } from 'gluegun'
+import { countTokens, estimatedCost } from '../../utils/countTokens'
 
 let _openAI: OpenAIApi | null = null
 export async function openAI() {
@@ -26,6 +27,23 @@ export async function openAI() {
   return _openAI
 }
 
+// We will store total costs on this object
+const _totalCosts = {
+  total: {
+    promptTokens: 0,
+    responseTokens: 0,
+    cost: '$0.00',
+  },
+  last: {
+    promptTokens: 0,
+    responseTokens: 0,
+    cost: '$0.00',
+  },
+}
+export function getTotalCosts() {
+  return _totalCosts
+}
+
 export const chatGPTPrompt = async (
   options: Partial<CreateChatCompletionRequest>
 ): Promise<ChatCompletionResponseMessage> => {
@@ -40,6 +58,9 @@ export const chatGPTPrompt = async (
     // provided options override defaults
     ...options,
   }
+
+  // count tokens in the prompt
+  const promptTokens = countTokens(JSON.stringify(mergedOptions))
 
   let response: AxiosResponse<CreateChatCompletionResponse, any>
   try {
@@ -73,7 +94,23 @@ export const chatGPTPrompt = async (
   }
 
   const message = response.data.choices[0].message
-  if (message) return message
+  if (message) {
+    const responseTokens = countTokens(`${message.content}\n${JSON.stringify(message.function_call)}`)
+    const totalTokens = promptTokens + responseTokens
+    const costEstimate = estimatedCost(totalTokens)
+
+    // update total costs
+    _totalCosts.total.promptTokens += promptTokens
+    _totalCosts.total.responseTokens += responseTokens
+    _totalCosts.total.cost = estimatedCost(_totalCosts.total.promptTokens + _totalCosts.total.responseTokens)
+
+    // update last costs
+    _totalCosts.last.promptTokens = promptTokens
+    _totalCosts.last.responseTokens = responseTokens
+    _totalCosts.last.cost = costEstimate
+
+    return message
+  }
 
   return {
     content: `ERROR: I'm sorry, I had an error. Please try again.\n\ncode: unknown_error\n`,

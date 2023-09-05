@@ -1,4 +1,4 @@
-import type { ChatCompletionFunctions, ChatCompletionRequestMessage } from 'openai'
+import type { ChatCompletionFunctions, ChatCompletionRequestMessage, ChatCompletionResponseMessage } from 'openai'
 
 export type ProjectFile = {
   path: string
@@ -65,6 +65,7 @@ export type CLIOptions = {
   from?: string
   to?: string
   help?: boolean
+  costs?: boolean
 }
 
 export type FileData = {

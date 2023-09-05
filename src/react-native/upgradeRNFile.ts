@@ -80,31 +80,33 @@ export async function upgradeFile({ fileData, options, currentVersion, targetVer
       { content: admonishments, role: 'system' },
     ]
 
-    let aiResponse = options.cacheFile ? await loadCachedResponse(options.cacheFile, fileData.path) : undefined
+    let aiMessage = options.cacheFile ? await loadCachedResponse(options.cacheFile, fileData.path) : undefined
 
-    if (aiResponse) {
+    if (aiMessage) {
       // delay briefly to simulate a real request
       await new Promise((resolve) => setTimeout(resolve, 2500))
       log(`Using cached response for ${fileData.path}`)
     } else {
-      aiResponse = await chatGPTPrompt({ functions, messages, model: 'gpt-4' })
+      aiMessage = await chatGPTPrompt({ functions, messages, model: 'gpt-4' })
+
+      if (!aiMessage) return stop('🙈', `No response from AI.`)
 
       // check for too_many_requests, context_length_exceeded, etc
-      const errorResult = await checkAIResponseForError({ aiResponse, sourceFileContents, fileData })
+      const errorResult = await checkAIResponseForError({ aiResponse: aiMessage, sourceFileContents, fileData })
       if (errorResult.next === 'retry') continue
       if (errorResult.next === 'skip') return { userWantsToExit: false }
 
-      if (options.cacheFile) await saveCachedResponse(options.cacheFile, fileData.path, aiResponse)
+      if (options.cacheFile) await saveCachedResponse(options.cacheFile, fileData.path, aiMessage)
     }
 
     hide()
 
-    log({ aiResponse })
+    log({ aiResponse: aiMessage })
 
-    const functionName = aiResponse?.function_call?.name
+    const functionName = aiMessage?.function_call?.name
     if (!functionName) {
       print.error(`🛑 Error: No function name found in response.`)
-      print.error(`   ${JSON.stringify(aiResponse, null, 2)}`)
+      print.error(`   ${JSON.stringify(aiMessage, null, 2)}`)
       const cont = options.interactive ? await prompt.confirm('Try again?') : false
       if (cont) continue
 
@@ -115,10 +117,10 @@ export async function upgradeFile({ fileData, options, currentVersion, targetVer
     }
 
     try {
-      var functionArgs = JSON.parse(aiResponse?.function_call?.arguments || '{}')
+      var functionArgs = JSON.parse(aiMessage?.function_call?.arguments || '{}')
     } catch (e: any) {
       print.error(`🛑 Error parsing function arguments: ${e.message}`)
-      print.error(`   ${aiResponse?.function_call?.arguments}`)
+      print.error(`   ${aiMessage?.function_call?.arguments}`)
 
       const cont = options.interactive ? await prompt.confirm('Try again?') : false
       if (cont) continue
@@ -129,7 +131,7 @@ export async function upgradeFile({ fileData, options, currentVersion, targetVer
       return { userWantsToExit: false }
     }
 
-    const fnResult = await callFunction({ functionName, functionArgs, functions, aiResponse, fileData })
+    const fnResult = await callFunction({ functionName, functionArgs, functions, aiResponse: aiMessage, fileData })
 
     done(`Upgraded file ${fileData.path}.`)
 
@@ -140,7 +142,7 @@ export async function upgradeFile({ fileData, options, currentVersion, targetVer
     const result = fnResult.result
     if (!result) {
       print.error(`🛑 Error: No result found in response.`)
-      print.error(`   ${JSON.stringify(aiResponse, null, 2)}`)
+      print.error(`   ${JSON.stringify(aiMessage, null, 2)}`)
       const cont = await prompt.confirm('Try again?')
       if (cont) continue
 

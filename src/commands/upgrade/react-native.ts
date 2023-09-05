@@ -9,7 +9,7 @@ import { isFileIgnored } from '../../utils/isFileIgnored'
 import { upgradeFile } from '../../react-native/upgradeRNFile'
 import { CLIOptions } from '../../types'
 import { helpUpgradeRN } from '../../utils/helpUpgradeRN'
-import { checkOpenAIKey } from '../../ai/openai/openai'
+import { checkOpenAIKey, getTotalCosts } from '../../ai/openai/openai'
 
 const ignoreFiles = [
   'README.md',
@@ -98,11 +98,19 @@ const command: GluegunCommand = {
 
       br()
 
-      if (result.userWantsToExit) break
+      if (result?.userWantsToExit) break
     }
 
     // Print a summary of the changes
     summarize(files)
+
+    // Print out the costs
+    if (options.costs) {
+      const costs = getTotalCosts()
+      print.info(`\nTotal prompt tokens: ${costs.total.promptTokens}`)
+      print.info(`Total response tokens: ${costs.total.responseTokens}`)
+      print.info(`Total cost: ${costs.total.cost}`)
+    }
 
     hr()
     print.info(bold(white(`Done!\n`)))
