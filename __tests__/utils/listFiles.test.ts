@@ -1,4 +1,4 @@
-import { listFiles } from '../../src/utils/listFiles'
+import { listFiles } from '../../src/utils/experimental/listFiles'
 import type { SmartContext, ListFilesOptions } from '../../src/types'
 
 const fakeContext: SmartContext = {

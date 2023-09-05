@@ -8,7 +8,7 @@
   "bin": "bin/flame",
   "scripts": {
     "clean-build": "rm -rf ./build",
-    "compile": "tsc -p .",
+    "compile": "tsc -p ./.config/tsconfig.json",
     "copy-templates": "copyfiles ./src/templates/* ./build/templates",
     "build": "yarn clean-build && yarn compile && yarn copy-templates",
     "prepublishOnly": "yarn build",

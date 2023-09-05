@@ -10,6 +10,9 @@ test('outputs version', async () => {
 })
 
 test('outputs help', async () => {
+  const version = require('../package.json').version
+  expect(version).toContain('.') // sanity check
+
   const output = await cli('--help')
-  expect(output).toContain('0.0.1')
+  expect(output).toContain(version)
 })
