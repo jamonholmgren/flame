@@ -5,8 +5,10 @@ const src = filesystem.path(__dirname, '..')
 const cli = async (cmd) => system.run('node ' + filesystem.path(src, 'bin', 'flame') + ` ${cmd}`)
 
 test('outputs version', async () => {
+  const version = require('../package.json').version
+  expect(version).toContain('.') // sanity check
   const output = await cli('--version')
-  expect(output).toContain('0.0.1')
+  expect(output).toContain(version)
 })
 
 test('outputs help', async () => {
