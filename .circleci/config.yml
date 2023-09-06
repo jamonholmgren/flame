@@ -35,7 +35,7 @@ jobs:
       # Run semantic-release after all the above is set.
       - run:
           name: Publish to NPM
-          command: yarn semantic-release
+          command: yarn ci:publish
 
 workflows:
   version: 2.1
