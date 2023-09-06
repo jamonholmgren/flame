@@ -5,7 +5,9 @@
   "license": "MIT",
   "private": false,
   "types": "build/types/types.d.ts",
-  "bin": "bin/flame",
+  "bin": {
+    "flame": "bin/flame"
+  },
   "scripts": {
     "clean-build": "rm -rf ./build",
     "compile": "tsc -p ./tsconfig.json",
