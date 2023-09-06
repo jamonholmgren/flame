@@ -2,10 +2,17 @@
 # See: https://circleci.com/docs/configuration-reference
 version: 2.1
 
+defaults: &defaults
+  docker:
+    # Choose the version of Node you want here
+    - image: cimg/node:18.17.1
+  working_directory: ~/repo
+
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/configuration-reference/#jobs
 jobs:
   setup:
+    <<: *defaults
     steps:
       - checkout
       - run:
@@ -14,12 +21,14 @@ jobs:
             yarn install --frozen-lockfile
 
   tests:
+    <<: *defaults
     steps:
       - run:
           name: Run tests
           command: yarn test
 
   publish:
+    <<: *defaults
     steps:
       # - run: echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
       # Run semantic-release after all the above is set.
@@ -28,7 +37,7 @@ jobs:
           command: yarn semantic-release
 
 workflows:
-  version: 2
+  version: 2.1
   test_and_release:
     jobs:
       - setup
