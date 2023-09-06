@@ -31,7 +31,7 @@ jobs:
           name: Install dependencies
           command: |
             yarn install --frozen-lockfile
-      # - run: echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
+      - run: echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
       # Run semantic-release after all the above is set.
       - run:
           name: Publish to NPM
