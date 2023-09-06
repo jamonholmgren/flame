@@ -11,7 +11,7 @@ defaults: &defaults
 # Define a job to be invoked later in a workflow.
 # See: https://circleci.com/docs/configuration-reference/#jobs
 jobs:
-  setup:
+  tests:
     <<: *defaults
     steps:
       - checkout
@@ -19,10 +19,6 @@ jobs:
           name: Install dependencies
           command: |
             yarn install --frozen-lockfile
-
-  tests:
-    <<: *defaults
-    steps:
       - run:
           name: Run tests
           command: yarn test
@@ -30,6 +26,11 @@ jobs:
   publish:
     <<: *defaults
     steps:
+      - checkout
+      - run:
+          name: Install dependencies
+          command: |
+            yarn install --frozen-lockfile
       # - run: echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
       # Run semantic-release after all the above is set.
       - run:
@@ -40,10 +41,7 @@ workflows:
   version: 2.1
   test_and_release:
     jobs:
-      - setup
-      - tests:
-          requires:
-            - setup
+      - tests
       - publish:
           requires:
             - tests
