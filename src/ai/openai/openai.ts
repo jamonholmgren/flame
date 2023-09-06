@@ -96,13 +96,12 @@ export const chatGPTPrompt = async (
   const message = response.data.choices[0].message
   if (message) {
     const responseTokens = countTokens(`${message.content}\n${JSON.stringify(message.function_call)}`)
-    const totalTokens = promptTokens + responseTokens
-    const costEstimate = estimatedCost(totalTokens)
+    const costEstimate = estimatedCost(promptTokens, responseTokens)
 
     // update total costs
     _totalCosts.total.promptTokens += promptTokens
     _totalCosts.total.responseTokens += responseTokens
-    _totalCosts.total.cost = estimatedCost(_totalCosts.total.promptTokens + _totalCosts.total.responseTokens)
+    _totalCosts.total.cost = estimatedCost(_totalCosts.total.promptTokens, _totalCosts.total.responseTokens)
 
     // update last costs
     _totalCosts.last.promptTokens = promptTokens

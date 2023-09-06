@@ -8,7 +8,7 @@ import { createUpgradeRNPrompts } from '../prompts/upgradeReactNativePrompts'
 import { patch } from '../ai/openai/functions/patch'
 import { createFile } from '../ai/openai/functions/createFile'
 import { deleteFile } from '../ai/openai/functions/deleteFile'
-import { chatGPTPrompt } from '../ai/openai/openai'
+import { chatGPTPrompt, getTotalCosts } from '../ai/openai/openai'
 import { callFunction } from '../utils/callFunction'
 import { deleteCachedResponse, loadCachedResponse, saveCachedResponse } from '../utils/persistCache'
 import { checkAIResponseForError } from '../utils/checkAIResponseForError'
@@ -25,7 +25,7 @@ type UpgradeFileOptions = {
 }
 
 export async function upgradeFile({ fileData, options, currentVersion, targetVersion }: UpgradeFileOptions) {
-  const { bold, white } = print.colors
+  const { bold, white, gray } = print.colors
   const log = (t: any) => options.debug && console.log(t)
 
   // load the file from the filesystem
@@ -151,6 +151,13 @@ export async function upgradeFile({ fileData, options, currentVersion, targetVer
       fileData.error = 'no result found'
       return { userWantsToExit: false }
     }
+
+    const costs = getTotalCosts()
+    print.info(
+      gray(
+        `Prompt: ${costs.last.promptTokens} tokens | Response: ${costs.last.responseTokens} tokens | Estimated cost: ${costs.last.cost}`
+      )
+    )
 
     // interactive mode allows the user to undo the changes and give more instructions
     const keepChanges = await menuKeepChanges({ result, fileData, options })

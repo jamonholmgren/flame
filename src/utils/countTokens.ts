@@ -6,15 +6,18 @@
  * since we are mainly using code, we go with 3 characters to be safe.
  */
 export function countTokens(str: string): number {
-  return str.length / 3
+  return Math.floor(str.length / 3)
 }
 
 /**
  * Returns estimated cost as a string for printing.
  */
-export function estimatedCost(tokens: number, model = 'gpt-4'): string {
+export function estimatedCost(promptTokens: number, responseTokens: number, model = 'gpt-4'): string {
   if (model === 'gpt-4') {
-    return `~$${Math.floor((tokens / 10) * 0.003) * 100}`
+    // $0.03 / 1K tokens and $0.06 / 1K tokens
+    const promptCost = Math.round((promptTokens / 1000) * 0.03 * 100) / 100
+    const responseCost = Math.round((responseTokens / 1000) * 0.06 * 100) / 100
+    return `~$${promptCost + responseCost}`
   } else {
     return `Unknown model: ${model}`
   }

@@ -105,12 +105,12 @@ const command: GluegunCommand = {
     summarize(files)
 
     // Print out the costs
-    if (options.costs) {
-      const costs = getTotalCosts()
-      print.info(`\nTotal prompt tokens: ${costs.total.promptTokens}`)
-      print.info(`Total response tokens: ${costs.total.responseTokens}`)
-      print.info(`Total cost: ${costs.total.cost}`)
-    }
+    const costs = getTotalCosts()
+    hr()
+    print.info(bold(white(`Costs:\n`)))
+    print.info(`Total prompt tokens: ${costs.total.promptTokens}`)
+    print.info(`Total response tokens: ${costs.total.responseTokens}`)
+    print.info(`Total cost: ${costs.total.cost}`)
 
     hr()
     print.info(bold(white(`Done!\n`)))
