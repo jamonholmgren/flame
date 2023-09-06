@@ -2,11 +2,11 @@
  * Super-basic token estimator. Eventually, this should be replaced by a
  * real tokenizer like gpt-tokenizer or similar.
  *
- * OpenAI says that tokens are roughly equivalent to 4 characters. However,
- * since we are mainly using code, we go with 3 characters to be safe.
+ * OpenAI says that tokens are roughly equivalent to 4 characters. In
+ * our tests, this seems to be fairly accurate.
  */
 export function countTokens(str: string): number {
-  return Math.floor(str.length / 3)
+  return Math.floor(str.length / 4)
 }
 
 /**
