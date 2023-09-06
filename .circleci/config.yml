@@ -6,7 +6,6 @@ version: 2.1
 # See: https://circleci.com/docs/configuration-reference/#jobs
 jobs:
   setup:
-    <<: *defaults
     steps:
       - checkout
       - run:
@@ -15,14 +14,12 @@ jobs:
             yarn install --frozen-lockfile
 
   tests:
-    <<: *defaults
     steps:
       - run:
           name: Run tests
           command: yarn test
 
   publish:
-    <<: *defaults
     steps:
       # - run: echo "//registry.npmjs.org/:_authToken=$NPM_TOKEN" >> ~/.npmrc
       # Run semantic-release after all the above is set.
