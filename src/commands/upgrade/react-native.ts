@@ -62,7 +62,11 @@ const command: GluegunCommand = {
     info('Upgrade:', bold(targetVersion))
 
     spin('Fetching upgrade diff')
-    const { files, error: diffError } = await fetchRNDiff({ currentVersion, targetVersion })
+    const { files, error: diffError } = await fetchRNDiff({
+      currentVersion,
+      targetVersion,
+      cacheFile: options.cacheFile,
+    })
     if (diffError) return stop('🙈', diffError)
     if (!files || files.length === 0) {
       return stop('🙈', `Could not find any files to upgrade. Please try again.`)
