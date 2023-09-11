@@ -1,6 +1,6 @@
 # Contributing
 
-Flame AI is designed to be easy to contribute to. It's built on top of [Gluegun](https://github.com/infinitered/gluegun), which is a popular node CLI framework also built by [Infinite Red](https://infinite.red).
+Flame AI is intended to be contributor-friendly. It's built on top of [Gluegun](https://github.com/infinitered/gluegun), which is a popular node CLI framework also built by [Infinite Red](https://infinite.red).
 
 ## Get Started
 
