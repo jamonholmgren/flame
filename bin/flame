@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+// we use `var` in this file just for maximum compatibility; don't worry, it's fine ;-)
+
 /* tslint:disable */
 // check if we're running in dev mode
 var devMode = require('fs').existsSync(`${__dirname}/../src`)
