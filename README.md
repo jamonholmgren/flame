@@ -2,7 +2,7 @@
 
 Flame AI is a CLI for interacting with OpenAI and doing codemods and codegen. It includes an interactive mode and several other specialized commands.
 
-<img alt="Flame AI screenshot" src="https://github.com/infinitered/flame/assets/1479215/68784ba3-4526-4312-8dcc-35741ebf1a0e">
+<img alt="Flame AI screenshot" src="https://raw.githubusercontent.com/infinitered/images/main/images/flame-intro.png">
 
 To run Flame, you need Node v18+ installed and have access to an OpenAI [gpt-4 token key](https://platform.openai.com/account/api-keys). If you need access to gpt-4, [here's how to get it](https://help.openai.com/en/articles/7102672-how-can-i-access-gpt-4).
 
