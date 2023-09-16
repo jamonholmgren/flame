@@ -21,9 +21,16 @@ type UpgradeFileOptions = {
   options: CLIOptions
   currentVersion: string
   targetVersion: string
+  generalPrompt: string
 }
 
-export async function upgradeFile({ fileData, options, currentVersion, targetVersion }: UpgradeFileOptions) {
+export async function upgradeFile({
+  fileData,
+  options,
+  currentVersion,
+  targetVersion,
+  generalPrompt,
+}: UpgradeFileOptions) {
   const { bold, white, gray } = print.colors
   const log = (t: any) => options.debug && console.log(t)
 
@@ -72,6 +79,7 @@ export async function upgradeFile({ fileData, options, currentVersion, targetVer
     const messages: MessageParam[] = [
       { content: orientation, role: 'system' },
       { content: convertPrompt, role: 'user' },
+      { content: generalPrompt, role: 'user' },
       ...fileData.customPrompts.map((i) => ({
         content: `In addition: ${i}`,
         role: 'user' as const,
@@ -108,8 +116,12 @@ export async function upgradeFile({ fileData, options, currentVersion, targetVer
 
     const functionName = aiMessage?.function_call?.name
     if (!functionName) {
-      print.error(`🛑 Error: No function name found in response.`)
-      print.error(`   ${JSON.stringify(aiMessage, null, 2)}`)
+      if (aiMessage.content) {
+        print.info(`ℹ️ ${aiMessage.content}`)
+      } else {
+        print.error(`🛑 Error: No function name found in response.`)
+        print.error(`   ${JSON.stringify(aiMessage, null, 2)}\n`)
+      }
       const cont = options.interactive ? await prompt.confirm('Try again?') : false
       if (cont) continue
 
