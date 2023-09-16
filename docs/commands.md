@@ -37,12 +37,13 @@ Options:
 Hints:
 
 - Interactive mode is the most useful. It will ask you questions and guide you through the upgrade process.
+- If running in interactive mode, Flame will ask you for a general prompt that will be used for every file to be upgraded. This is a flexible tool; for example, you can mention that you already attempted the upgrade and some files may have been upgraded already, and instruct it to tell you if it finds any issues.
 - If a file has moved, we are not currently able to find it nor move it for you. You'll need to move it manually or upgrade moved files manually. In the future, we will add ways to find those files either manually or automatically.
 - If you've customized some files extensively, you may need to manually apply the changes. Over time, Flame AI will get better at handling these cases.
 
 ## EXPERIMENTAL: Interactive Code Editing and Authoring Mode
 
-The interactive mode is one of Flame's most exciting features, but it's still **very much a work in progress.** It allows you to chat with the AI, load files, list files, and make modifications to code using plain English.
+The interactive code editing mode is one of Flame's most exciting features, but it's still **very much a work in progress.** It allows you to chat with the AI, load files, list files, and make modifications to code using plain English.
 
 To start the interactive mode, run `flame experimental interactive`. The current directory will be where you will be working. You can also specify a directory to work in by running `flame experimental interactive <directory>`.
 
