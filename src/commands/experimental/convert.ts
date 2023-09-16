@@ -21,7 +21,7 @@
  */
 import { GluegunCommand } from 'gluegun'
 import { openAI } from '../../ai/openai/openai'
-import { ChatCompletionRequestMessage } from 'openai'
+import { MessageParam } from '../../types'
 
 // type for recipes
 type Recipe = {
@@ -99,7 +99,7 @@ const command: GluegunCommand = {
     // Update spinner text to show progress for chunks
     spinner.text = `AI conversion of ${sourceFile} from ${from} to ${to}`
 
-    const messages: ChatCompletionRequestMessage[] = [
+    const messages: MessageParam[] = [
       {
         content: recipe.prompt,
         role: 'system',
@@ -109,14 +109,14 @@ const command: GluegunCommand = {
         role: 'system',
       },
       {
-        content: recipe.admonishments,
+        content: recipe.admonishments || '',
         role: 'system',
       },
     ]
 
     const openai = await openAI()
     try {
-      var response = await openai.createChatCompletion({
+      var response = await openai.chat.completions.create({
         model: 'gpt-4',
         messages,
         // max_tokens: 3000,
@@ -130,7 +130,7 @@ const command: GluegunCommand = {
       return
     }
 
-    if (!response?.data?.choices) {
+    if (!response?.choices) {
       print.error('Error or no response from OpenAI')
       return
     }
@@ -140,7 +140,7 @@ const command: GluegunCommand = {
     spinner.text = `Writing updated code to ${sourceFile}`
     spinner.start()
 
-    const message = response.data.choices[0].message
+    const message = response.choices[0].message
     if (!message) {
       print.error('Error or no response from OpenAI')
       return

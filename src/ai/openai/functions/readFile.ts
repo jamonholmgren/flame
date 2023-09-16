@@ -1,4 +1,4 @@
-import type { ChatCompletionFunction, ChatCompletionFunctionResult } from '../../../types'
+import type { ChatCompletionFunction, FunctionCallResult } from '../../../types'
 import { filesystem } from 'gluegun'
 
 export const readFile: ChatCompletionFunction = {
@@ -23,7 +23,7 @@ export const readFile: ChatCompletionFunction = {
     }
 
     // We resubmit; the file will be read in the next iteration
-    const returnValue: ChatCompletionFunctionResult = {
+    const returnValue: FunctionCallResult = {
       next: 'resubmit',
     }
 

@@ -1,5 +1,4 @@
-import type { SmartContext } from '../../types'
-import type { ChatCompletionRequestMessage } from 'openai'
+import type { MessageParam, SmartContext } from '../../types'
 import type { GluegunCommand } from 'gluegun'
 import { chatGPTPrompt, checkOpenAIKey } from '../../ai/openai/openai'
 import { createSmartContextBackchat } from '../../utils/smartContext'
@@ -75,7 +74,7 @@ const command: GluegunCommand = {
     fileLoaderSpinner.succeed(
       `All set! I just browsed through ${
         Object.keys(context.files).length
-      } files. Now, we're ready to tackle anything together!\n`
+      } files. Now, we're ready to tackle anything together!\n`,
     )
 
     // interactive loop
@@ -103,7 +102,7 @@ const command: GluegunCommand = {
       const result = await prompt.ask({ type: 'input', name: 'chatMessage', message: '→ ' })
       print.info('')
 
-      const newMessage: ChatCompletionRequestMessage = {
+      const newMessage: MessageParam = {
         content: result.chatMessage,
         role: 'user',
       }

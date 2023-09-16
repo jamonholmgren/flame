@@ -1,11 +1,11 @@
-import { print, prompt, filesystem } from 'gluegun'
+import { print, prompt } from 'gluegun'
 import type { FileData } from '../types'
-import type { ChatCompletionFunctionResult } from '../types'
+import type { FunctionCallResult } from '../types'
 import { deleteCachedResponse } from './persistCache'
 // import { coloredDiff } from './coloredDiff'
 
 type KeepChangesOptions = {
-  result: ChatCompletionFunctionResult
+  result: FunctionCallResult
   options: { cacheFile?: string }
   fileData: FileData
 }

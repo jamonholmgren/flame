@@ -1,6 +1,5 @@
-import type { FileData } from '../types'
+import type { FileData, MessageCompletion, MessageParam } from '../types'
 import type { CLIOptions, ChatCompletionFunction } from '../types'
-import type { ChatCompletionRequestMessage, ChatCompletionResponseMessage } from 'openai'
 import { filesystem, prompt, print } from 'gluegun'
 import { hide, spin, stop, done } from '../utils/spin'
 import { br } from '../utils/printing'
@@ -70,7 +69,7 @@ export async function upgradeFile({ fileData, options, currentVersion, targetVer
     // We'll let the AI patch files and create files
     const functions: ChatCompletionFunction[] = [patch, createFile, deleteFile]
 
-    const messages: ChatCompletionRequestMessage[] = [
+    const messages: MessageParam[] = [
       { content: orientation, role: 'system' },
       { content: convertPrompt, role: 'user' },
       ...fileData.customPrompts.map((i) => ({
@@ -81,7 +80,7 @@ export async function upgradeFile({ fileData, options, currentVersion, targetVer
     ]
 
     let aiMessage = options.cacheFile
-      ? await loadCachedResponse<ChatCompletionResponseMessage>(options.cacheFile, fileData.path)
+      ? await loadCachedResponse<MessageCompletion>(options.cacheFile, fileData.path)
       : undefined
 
     if (aiMessage) {
@@ -99,7 +98,7 @@ export async function upgradeFile({ fileData, options, currentVersion, targetVer
       if (errorResult.next === 'skip') return { userWantsToExit: false }
 
       if (options.cacheFile) {
-        await saveCachedResponse<ChatCompletionResponseMessage>(options.cacheFile, fileData.path, aiMessage)
+        await saveCachedResponse<MessageCompletion>(options.cacheFile, fileData.path, aiMessage)
       }
     }
 
@@ -159,8 +158,8 @@ export async function upgradeFile({ fileData, options, currentVersion, targetVer
     const costs = getTotalCosts()
     print.info(
       gray(
-        `Prompt: ${costs.last.promptTokens} tokens | Response: ${costs.last.responseTokens} tokens | Estimated cost: ${costs.last.cost}`
-      )
+        `Prompt: ${costs.last.promptTokens} tokens | Response: ${costs.last.responseTokens} tokens | Estimated cost: ${costs.last.cost}`,
+      ),
     )
 
     // interactive mode allows the user to undo the changes and give more instructions
