@@ -23,7 +23,7 @@ const command: GluegunCommand = {
     const { print, filesystem, parameters } = toolbox
     const options = parameters.options as CLIOptions
     const { colors } = print
-    const { red, cyan, white, bold } = colors
+    const { red, cyan, white, bold, gray } = colors
 
     checkOpenAIKey()
 
@@ -52,7 +52,7 @@ const command: GluegunCommand = {
     if (!currentVersion || !targetVersion) {
       return stop(
         '🙈',
-        `Could not determine current or target version. Please make sure you are in a React Native project folder and try again.`
+        `Could not determine current or target version. Please make sure you are in a React Native project folder and try again.`,
       )
     }
 
@@ -93,12 +93,27 @@ const command: GluegunCommand = {
     hr()
     br()
 
+    // Ask them for a persistant prompt that will be used for all files
+    let generalPrompt = ''
+    if (options.interactive) {
+      const { prompt } = await toolbox.prompt.ask({
+        type: 'input',
+        name: 'prompt',
+        message: `Do you have any general instructions for me for this upgrade?\n  ${gray(
+          `(optional -- leave blank if not)`,
+        )}\n`,
+        initial: '',
+      })
+      generalPrompt = prompt
+      br()
+    }
+
     print.info(bold(white(`Starting ${cyan('React Native')} upgrade using ${red(bold('Flame AI'))}\n`)))
 
     for (const fileData of files) {
       if (isFileIgnored({ ignoreFiles, only: options.only, fileData })) continue
 
-      const result = await upgradeFile({ fileData, options, currentVersion, targetVersion })
+      const result = await upgradeFile({ fileData, options, currentVersion, targetVersion, generalPrompt })
 
       br()
 
