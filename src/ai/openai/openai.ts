@@ -1,15 +1,10 @@
 import type { AxiosResponse } from 'axios'
-import {
-  ChatCompletionResponseMessage,
-  Configuration,
-  CreateChatCompletionRequest,
-  CreateChatCompletionResponse,
-  OpenAIApi,
-} from 'openai'
+import OpenAI from 'openai'
 import { print } from 'gluegun'
 import { countTokens, estimatedCost } from '../../utils/countTokens'
+import { ChatCompletion, ChatRequest, MessageCompletion } from '../../types'
 
-let _openAI: OpenAIApi | null = null
+let _openAI: OpenAI | null = null
 export async function openAI() {
   if (!_openAI) {
     let api_key = process.env.OPENAI_API_KEY
@@ -17,11 +12,11 @@ export async function openAI() {
 
     if (!api_key) {
       throw new Error(
-        'OpenAI API Key not found. Please set your OpenAI key as an environment variable. Refer to the README for instructions.'
+        'OpenAI API Key not found. Please set your OpenAI key as an environment variable. Refer to the README for instructions.',
       )
     }
 
-    _openAI = new OpenAIApi(new Configuration({ apiKey: api_key, organization }))
+    _openAI = new OpenAI({ apiKey: api_key, organization })
   }
 
   return _openAI
@@ -44,9 +39,7 @@ export function getTotalCosts() {
   return _totalCosts
 }
 
-export const chatGPTPrompt = async (
-  options: Partial<CreateChatCompletionRequest>
-): Promise<ChatCompletionResponseMessage> => {
+export const chatGPTPrompt = async (options: Partial<ChatRequest>): Promise<MessageCompletion> => {
   const ai = await openAI()
 
   const mergedOptions = {
@@ -62,9 +55,12 @@ export const chatGPTPrompt = async (
   // count tokens in the prompt
   const promptTokens = countTokens(JSON.stringify(mergedOptions))
 
-  let response: AxiosResponse<CreateChatCompletionResponse, any>
+  let response: ChatCompletion
   try {
-    response = await ai.createChatCompletion(mergedOptions)
+    response = await ai.chat.completions.create({
+      ...mergedOptions,
+      stream: false,
+    })
   } catch (e: any) {
     // Check for 429 rate limit
     if (e?.response?.status === 429) {
@@ -93,7 +89,7 @@ export const chatGPTPrompt = async (
     }
   }
 
-  const message = response.data.choices[0].message
+  const message = response.choices[0].message
   if (message) {
     const responseTokens = countTokens(`${message.content}\n${JSON.stringify(message.function_call)}`)
     const costEstimate = estimatedCost(promptTokens, responseTokens)
@@ -120,12 +116,12 @@ export const chatGPTPrompt = async (
 export async function createEmbedding(text: string) {
   const ai = await openAI()
 
-  const embeddingsResponse = await ai.createEmbedding({
+  const embeddingsResponse = await ai.embeddings.create({
     input: text,
     model: 'text-embedding-ada-002',
   })
 
-  return embeddingsResponse.data.data
+  return embeddingsResponse.data
 }
 
 export function checkOpenAIKey() {

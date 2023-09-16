@@ -1,16 +1,15 @@
-import type { SmartContext } from '../types'
-import type { ChatCompletionRequestMessage } from 'openai'
+import type { MessageParam, SmartContext } from '../types'
 import { filesystem, print } from 'gluegun'
 import { mostRelevantFiles } from './experimental/mostRelevantFiles'
 
 const FILE_LENGTH_LIMIT = 1000 * 3 // characters * 3 = tokens (roughly)
 const TOTAL_FILE_LENGTH_LIMIT = 5000 * 3 // characters * 3 = tokens (roughly)
 
-export async function createSmartContextBackchat(context: SmartContext): Promise<ChatCompletionRequestMessage[]> {
+export async function createSmartContextBackchat(context: SmartContext): Promise<MessageParam[]> {
   // This function will provide the backchat for the interactive.ts command,
   // carefully tuned for the current context.
 
-  const backchat: ChatCompletionRequestMessage[] = []
+  const backchat: MessageParam[] = []
 
   let smartContextDescription = ``
 
@@ -118,7 +117,7 @@ export async function createSmartContextBackchat(context: SmartContext): Promise
   if (relevantFilesToUse.length > 0) {
     // show any other relevant files we have budget to show and which haven't been shown yet
     for (let [i, { file, similarity }] of relevantFilesToUse.entries()) {
-      let fileContent = await filesystem.readAsync(file.path)
+      let fileContent = (await filesystem.readAsync(file.path)) || null
 
       // truncate individual files if over FILE_LENGTH_LIMIT
       if (fileContent?.length! > FILE_LENGTH_LIMIT) {
@@ -127,7 +126,7 @@ export async function createSmartContextBackchat(context: SmartContext): Promise
 
       backchat.push({
         role: 'assistant',
-        content: undefined,
+        content: null,
         function_call: {
           name: 'readFileAndReportBack',
           arguments: JSON.stringify({ path: file.path }),

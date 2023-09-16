@@ -1,7 +1,6 @@
-import { filesystem, print } from 'gluegun'
-import { ChatCompletionFunctions } from 'openai'
+import { filesystem } from 'gluegun'
 import { listFiles } from '../utils/experimental/listFiles'
-import { SmartContext } from '../types'
+import type { FunctionCall, SmartContext } from '../types'
 
 type ChatCompletionFunctionResponse = {
   file?: string
@@ -14,7 +13,7 @@ type ChatCompletionFunctionResponse = {
   error?: string
 }
 
-type ChatCompletionFunction = ChatCompletionFunctions & {
+type ChatCompletionFunction = FunctionCall & {
   fn: (args: any, context: SmartContext) => Promise<ChatCompletionFunctionResponse>
 }
 

@@ -1,14 +1,10 @@
-import { ChatCompletionResponseMessage } from 'openai'
+import OpenAI from 'openai'
 import { AIFunctions } from '../../ai/functions'
-import { SmartContext } from '../../types'
+import type { MessageParam, SmartContext } from '../../types'
 import { print } from 'gluegun'
 
 // Helper function to handle function calls
-export async function handleFunctionCall(
-  response: ChatCompletionResponseMessage,
-  functions: AIFunctions,
-  context: SmartContext
-) {
+export async function handleFunctionCall(response: MessageParam, functions: AIFunctions, context: SmartContext) {
   const functionName = response.function_call?.name
 
   if (!functionName) {
