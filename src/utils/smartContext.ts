@@ -8,7 +8,7 @@ const TOTAL_FILE_LENGTH_LIMIT = 5000 * 3 // characters * 3 = tokens (roughly)
 
 export async function createSmartContextBackchat(context: SmartContext): Promise<ChatCompletionRequestMessage[]> {
   // This function will provide the backchat for the interactive.ts command,
-  // carefully tuned for the current context.
+  // with older messages compressed via gpt-3.5.
 
   const backchat: ChatCompletionRequestMessage[] = []
 
@@ -22,6 +22,7 @@ export async function createSmartContextBackchat(context: SmartContext): Promise
     })
     smartContextDescription += 'project • '
   }
+
   // let's fetch the most relevant files, using the embeddings
   const relevantFiles = mostRelevantFiles(context, 0.7)
 
@@ -40,7 +41,7 @@ export async function createSmartContextBackchat(context: SmartContext): Promise
 
     backchat.push({
       content: `These are the files that seem relevant to the current task (and % relevant):\n${pathsWithRelevancy.join(
-        '\n'
+        '\n',
       )}`,
       role: 'user',
     })
