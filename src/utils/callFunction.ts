@@ -1,13 +1,12 @@
 import { print, prompt } from 'gluegun'
-import { ChatCompletionResponseMessage } from 'openai'
 import { ChatCompletionFunction } from '../types'
-import type { FileData } from '../types'
+import type { FileData, MessageCompletion } from '../types'
 
 type CallFunctionOptions = {
   functionName: string
   functionArgs: string
   functions: ChatCompletionFunction[]
-  aiResponse: ChatCompletionResponseMessage
+  aiResponse: MessageCompletion
   fileData: FileData
 }
 
