@@ -14,9 +14,9 @@
  *
  * 1. Make sure you have an OPENAI_API_KEY in your environment
  * 2. Make sure there's a recipe for the conversion you want to do in src/recipes
- * 3. Run `flame convert <from> <to> <sourceFile>`
+ * 3. Run `flame experimental convert <from> <to> <sourceFile>`
  *
- * e.g. `flame convert ava jest src/index.js`
+ * e.g. `flame experimental convert ava jest src/index.js`
  *
  */
 import { GluegunCommand } from 'gluegun'
@@ -77,7 +77,7 @@ const command: GluegunCommand = {
     // ensure there's a recipe for this conversion
     let recipe: Recipe
     try {
-      const recipeExport = require(`../recipes/${from}-to-${to}`) as { recipe: Recipe }
+      const recipeExport = require(`../../recipes/${from}-to-${to}`) as { recipe: Recipe }
       recipe = recipeExport.recipe
     } catch (e) {
       print.error(`No recipe found for converting from ${from} to ${to}`)
