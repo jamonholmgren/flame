@@ -5,6 +5,7 @@ import { countTokens, estimatedCost } from '../../utils/countTokens'
 import { ChatCompletion, ChatRequest, MessageCompletion } from '../../types'
 
 let _openAI: OpenAI | null = null
+const openAIModel = 'gpt-4'
 export async function openAI() {
   if (!_openAI) {
     let api_key = process.env.OPENAI_API_KEY
@@ -43,7 +44,7 @@ export const chatGPTPrompt = async (options: Partial<ChatRequest>): Promise<Mess
   const ai = await openAI()
 
   const mergedOptions = {
-    model: 'gpt-4',
+    model: openAIModel,
     messages: [],
     functions: [],
     stream: false,
@@ -74,6 +75,13 @@ export const chatGPTPrompt = async (options: Partial<ChatRequest>): Promise<Mess
     if (e.response?.data?.error?.code === 'context_length_exceeded') {
       return {
         content: `ERROR: I'm sorry, I went over the token limit. Please try again with a shorter prompt.\n\ncode: ${e.response?.data?.error?.code}\n`,
+        role: 'assistant',
+      }
+    }
+
+    if (e?.error?.code === 'model_not_found') {
+      return {
+        content: `ERROR: I'm sorry, I couldn't find the model. Are you sure you have access to model ${openAIModel}?\n\ncode: ${e?.error?.code}\n`,
         role: 'assistant',
       }
     }
