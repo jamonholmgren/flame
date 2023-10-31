@@ -5347,10 +5347,10 @@ open@^9.1.0:
     is-inside-container "^1.0.0"
     is-wsl "^2.2.0"
 
-openai@^4.7.1:
-  version "4.7.1"
-  resolved "https://registry.yarnpkg.com/openai/-/openai-4.7.1.tgz#dbc13f5e830365f8e927026acc5cf68255e57909"
-  integrity sha512-4Um9A4aLGzZxyENyway0zVgi69BOxaqXmjOCKp3PUteOvSn9TeVf6IjkaNY8k/LXYG5l2e7PpacOl2sxsrTc/w==
+openai@^4.14.2:
+  version "4.14.2"
+  resolved "https://registry.yarnpkg.com/openai/-/openai-4.14.2.tgz#edc09e986a922da22d14b96b547c29f435e724ae"
+  integrity sha512-JGlm7mMC7J+cyQZnQMOH7daD9cBqqWqLtlBsejElEkgoehPrYfdyxSxIGICz5xk4YimbwI5FlLATSVojLtCKXQ==
   dependencies:
     "@types/node" "^18.11.18"
     "@types/node-fetch" "^2.6.4"
@@ -5360,6 +5360,7 @@ openai@^4.7.1:
     form-data-encoder "1.7.2"
     formdata-node "^4.3.2"
     node-fetch "^2.6.7"
+    web-streams-polyfill "^3.2.1"
 
 optionator@^0.9.3:
   version "0.9.3"
@@ -6826,6 +6827,11 @@ web-streams-polyfill@4.0.0-beta.3:
   version "4.0.0-beta.3"
   resolved "https://registry.yarnpkg.com/web-streams-polyfill/-/web-streams-polyfill-4.0.0-beta.3.tgz#2898486b74f5156095e473efe989dcf185047a38"
   integrity sha512-QW95TCTaHmsYfHDybGMwO5IJIM93I/6vTRk+daHTWFPhwh+C8Cg7j7XyKrwrj8Ib6vYXe0ocYNrmzY4xAAN6ug==
+
+web-streams-polyfill@^3.2.1:
+  version "3.2.1"
+  resolved "https://registry.yarnpkg.com/web-streams-polyfill/-/web-streams-polyfill-3.2.1.tgz#71c2718c52b45fd49dbeee88634b3a60ceab42a6"
+  integrity sha512-e0MO3wdXWKrLbL0DgGnUV7WHVuw9OUvL4hjgnPkIeEvESk74gAITi5G606JtZPp39cd8HA9VQzCIvA49LpPN5Q==
 
 webidl-conversions@^3.0.0:
   version "3.0.1"

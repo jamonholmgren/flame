@@ -3,10 +3,6 @@
  * from one thing to another; whether it's a new version or an alternative library
  * or whatever.
  *
- * It needs some TLC; there are some new features in the OpenAI API (specifically,
- * function calling) that would make it much more efficient. (See the "upgrade react-native"
- * command as an example of using function calling.)
- *
  * Additionally, this would be much more useful with gpt-4-32k, which I currently do not
  * have access to. Bummer.
  *
@@ -21,7 +17,9 @@
  */
 import { GluegunCommand } from 'gluegun'
 import { openAI } from '../../ai/openai/openai'
-import { MessageParam } from '../../types'
+import type { ChatCompletionFunction, MessageParam } from '../../types'
+import { patch } from '../../ai/openai/functions/patch'
+import { callFunction } from '../../utils/callFunction'
 
 // type for recipes
 type Recipe = {
@@ -50,9 +48,6 @@ const command: GluegunCommand = {
       return
     }
 
-    // get lineChunks parameter
-    const lineChunks = parameters.options.lineChunks ? parameters.options.lineChunks.split(',').map(Number) : undefined
-
     // show a spinner
     print.info(`\nConverting ${sourceFile} from ${from} to ${to}\n`)
 
@@ -80,6 +75,7 @@ const command: GluegunCommand = {
       const recipeExport = require(`../../recipes/${from}-to-${to}`) as { recipe: Recipe }
       recipe = recipeExport.recipe
     } catch (e) {
+      spinner.fail()
       print.error(`No recipe found for converting from ${from} to ${to}`)
       return
     }
@@ -105,7 +101,7 @@ const command: GluegunCommand = {
         role: 'system',
       },
       {
-        content: `Here is the source file:\n\n\`\`\`\n${sourceFileContents}\n\`\`\``,
+        content: `Here is the source file (${sourceFile}):\n\n\`\`\`\n${sourceFileContents}\n\`\`\``,
         role: 'system',
       },
       {
@@ -115,13 +111,16 @@ const command: GluegunCommand = {
     ]
 
     const openai = await openAI()
+
+    const functions: ChatCompletionFunction[] = [patch]
+
     try {
       var response = await openai.chat.completions.create({
         model: 'gpt-4',
         messages,
         // max_tokens: 3000,
         // temperature: 0,
-        // functions, // TODO: important
+        functions,
         user: process.env.USER,
       })
     } catch (e: any) {
@@ -141,24 +140,17 @@ const command: GluegunCommand = {
     spinner.start()
 
     const message = response.choices[0].message
-    if (!message) {
-      print.error('Error or no response from OpenAI')
+    if (message.content) {
+      print.error(message.content)
       return
     }
 
-    // TODO: implement function calling!
-    const revampedCodeMessage = message.content
+    const functionName = message.function_call?.name || 'unknown'
+    const functionArgs = JSON.parse(message.function_call?.arguments || '{}')
+    const aiMessage = message
+    const fileData = {} as any
 
-    if (!revampedCodeMessage) {
-      print.error('No content found in message: ' + JSON.stringify(message))
-      return
-    }
-
-    // strip any line that starts and ends with backticks
-    const revampedCode = revampedCodeMessage.replace(/^```.*\n/gm, '').replace(/```.*\n$/gm, '')
-
-    // now write the full revamped code back to the source file
-    await toolbox.filesystem.writeAsync(sourceFile, revampedCode)
+    await callFunction({ functionName, functionArgs, functions, aiResponse: aiMessage, fileData })
 
     // update spinner
     spinner.succeed()
