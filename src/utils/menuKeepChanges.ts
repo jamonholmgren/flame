@@ -1,11 +1,11 @@
 import { print, prompt } from 'gluegun'
 import type { FileData } from '../types'
-import type { FunctionCallResult } from '../types'
+import type { ToolCallResult } from '../types'
 import { deleteCachedResponse } from './persistCache'
 // import { coloredDiff } from './coloredDiff'
 
 type KeepChangesOptions = {
-  result: FunctionCallResult
+  result: ToolCallResult
   options: { cacheFile?: string }
   fileData: FileData
 }

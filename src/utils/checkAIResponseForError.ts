@@ -1,8 +1,8 @@
 import { print, prompt } from 'gluegun'
-import type { FileData, MessageCompletion } from '../types'
+import type { FileData, AIMessage } from '../types'
 
 type CheckAIResponseForErrorOptions = {
-  aiResponse: MessageCompletion
+  aiResponse: AIMessage
   sourceFileContents: string
   fileData: FileData
 }

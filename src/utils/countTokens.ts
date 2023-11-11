@@ -18,6 +18,11 @@ export function estimatedCost(promptTokens: number, responseTokens: number, mode
     const promptCost = Math.round((promptTokens / 1000) * 0.03 * 100) / 100
     const responseCost = Math.round((responseTokens / 1000) * 0.06 * 100) / 100
     return `~$${promptCost + responseCost}`
+  } else if (model === 'gpt-4-1106-preview') {
+    // $0.01 / 1K tokens input and $0.03 / 1K tokens output
+    const promptCost = Math.round((promptTokens / 1000) * 0.01 * 100) / 100
+    const responseCost = Math.round((responseTokens / 1000) * 0.03 * 100) / 100
+    return `~$${promptCost + responseCost}`
   } else {
     return `Unknown model: ${model}`
   }

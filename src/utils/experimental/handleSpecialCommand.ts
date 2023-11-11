@@ -1,87 +1,70 @@
 import { print } from 'gluegun'
-import { SmartContext } from '../../types'
-import { createSmartContextBackchat } from '../smartContext'
-import { mostRelevantFiles } from './mostRelevantFiles'
+import { SessionContext } from '../../types'
+import { loadFile } from './loadFile'
+import { ChatCompletionFunctionMessageParam } from 'openai/resources'
 
-export async function handleSpecialCommand(command: string, context: SmartContext, debugLog: any[]) {
+export async function handleSpecialCommand(command: string, context: SessionContext) {
   // if the prompt is empty, skip it and try again
-  if (command.trim() === '') return true
-
-  // if the prompt is "debug", print the previous messages
-  if (command === '/debug') {
-    print.info(debugLog)
-    return true
-  }
-
-  // context
-  if (command.startsWith('/context.') || command === 'context') {
-    if (command === '/context.project') {
-      print.info(context.project)
-    } else if (command === '/context.task') {
-      print.info(context.currentTask)
-    } else if (command === '/context.files') {
-      const relevantFiles = await mostRelevantFiles(context)
-      print.info(relevantFiles)
-    } else if (command === '/context.messages') {
-      print.info(context.messages)
-    } else if (command === '/context.workingFolder') {
-      print.info(context.workingFolder)
-    } else if (command === '/context.clear') {
-      Object.assign(context, {
-        project: '',
-        currentTask: '',
-        currentFile: '',
-        files: {},
-        messages: [],
-      })
-    } else if (command === '/context.smart') {
-      print.info(await createSmartContextBackchat(context))
-    } else if (command === '/context') {
-      print.info(context)
-    }
-    return true
-  }
-
-  // if the prompt is "log", print the chat log
-  if (command === '/log') {
+  if (command === '/project') {
+    print.info(context.project)
+  } else if (command === '/cwd') {
+    print.info(context.cwd)
+  } else if (command === '/messages') {
     print.info(context.messages)
-    return true
-  }
-
-  // if the prompt is "log N", print the chat log last N messages
-  if (command.startsWith('/log ')) {
-    const targetLength = parseInt(command.split(' ')[1], 10) || 10
+  } else if (command.startsWith('/messages ')) {
+    // if the prompt is "messages N", print the chat log last N messages
+    const targetLength = parseInt(command.split(' ')[1] || '1', 10) || 10
     print.info(context.messages.slice(-targetLength))
-    return true
-  }
-
-  // if the prompt is "clear", clear the chat log
-  if (command === '/clear') {
+  } else if (command === '/clear') {
     context.messages.length = 0
-    print.info('Chat log cleared.')
-    return true
-  }
-
-  // if the prompt is "context", print the context
-  if (command === '/context') {
-    print.info('Context: ')
-    print.info(context)
-    return true
-  }
-
-  // if the prompt is "clearlast", clear the last message
-  if (command === '/clearlast') {
+    print.info('Messages cleared.')
+  } else if (command === '/clearlast') {
+    // if the prompt is "clearlast", clear the last message
     context.messages.pop()
     print.info('Last message cleared.')
-    return true
-  }
-
-  if (command === '/help') {
+  } else if (command === '/log') {
+    print.debug(context.messages)
+  } else if (command === '/loglast') {
+    print.debug(context.messages[context.messages.length - 1])
+  } else if (command === '/help') {
     print.info(
-      'Available commands:\n/context: Show the current context\n/debug: Print the previous messages\n/log: Print the chat log\n/clear: Clear the chat log\n/clearlast: Clear the last message'
+      'Available commands:\n/context: Show the current context\n/debug: Print the previous messages\n/log: Print the chat log\n/clear: Clear the chat log\n/clearlast: Clear the last message',
     )
+  } else if (command.startsWith('/load ')) {
+    // if the prompt starts with "load ", load a file into the backlog
+    const fileName = command.slice(5)
+    const loadedFile = await loadFile(fileName)
+
+    if (!loadedFile) {
+      print.error(`Could not find ${fileName}.`)
+      return true
+    }
+
+    if (!loadedFile.contents) {
+      print.error(`Could not find ${fileName}.`)
+      return true
+    }
+
+    // add the file to the message backlog as if it was requested by a function call
+    const message: ChatCompletionFunctionMessageParam = {
+      content: loadedFile.contents,
+      name: 'readFileAndReportBack',
+      role: 'function',
+    }
+
+    // add it as the current file (last file read)
+    context.currentFile = fileName
+
+    context.messages.push(message)
+
+    print.info(`Loaded ${fileName} (${loadedFile.contents.length} characters)`)
+
     return true
+  } else {
+    // no special command found
+    return false
   }
 
-  return false
+  // we handled it, so return true
+  return true
 }

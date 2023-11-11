@@ -104,7 +104,7 @@ const command: GluegunCommand = {
         )}\n`,
         initial: '',
       })
-      generalPrompt = prompt
+      generalPrompt = prompt || ''
       br()
     }
 

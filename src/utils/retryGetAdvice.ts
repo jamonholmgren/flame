@@ -19,6 +19,12 @@ export async function retryGetAdvice(fileData: FileData) {
   // typing "exit" always gets out of the CLI immediately
   if (nextInstructions === 'exit') process.exit(0)
 
-  if (nextInstructions?.trim().length > 0) fileData.customPrompts.push(nextInstructions)
+  if (!nextInstructions) {
+    print.info('⇾ No advice given. Moving on.')
+    br()
+    return
+  }
+
+  if (nextInstructions.trim().length > 0) fileData.customPrompts.push(nextInstructions)
   fileData.change = 'pending'
 }

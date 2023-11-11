@@ -9,6 +9,7 @@
     "noImplicitAny": false,
     "noImplicitThis": true,
     "noUnusedLocals": false,
+    "noUncheckedIndexedAccess": true,
     "sourceMap": true,
     "outDir": "build",
     "strict": true,

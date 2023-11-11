@@ -1,21 +1,19 @@
-import type { AxiosResponse } from 'axios'
 import OpenAI from 'openai'
 import { print } from 'gluegun'
 import { countTokens, estimatedCost } from '../../utils/countTokens'
-import { ChatCompletion, ChatRequest, MessageCompletion } from '../../types'
+import { ChatCompletion, ChatRequest, AIMessage } from '../../types'
 
 let _openAI: OpenAI | null = null
-const openAIModel = 'gpt-4'
-export async function openAI() {
-  if (!_openAI) {
-    let api_key = process.env.OPENAI_API_KEY
-    const organization = process.env.OPENAI_ORGANIZATION
 
-    if (!api_key) {
-      throw new Error(
-        'OpenAI API Key not found. Please set your OpenAI key as an environment variable. Refer to the README for instructions.',
-      )
-    }
+// Models: https://platform.openai.com/account/limits
+const openAIModel = 'gpt-4-1106-preview' // 128k tokens
+
+export function openAI() {
+  if (!_openAI) {
+    checkOpenAIKey()
+
+    let api_key = process.env.OPENAI_API_KEY!
+    const organization = process.env.OPENAI_ORGANIZATION
 
     _openAI = new OpenAI({ apiKey: api_key, organization })
   }
@@ -40,8 +38,8 @@ export function getTotalCosts() {
   return _totalCosts
 }
 
-export const chatGPTPrompt = async (options: Partial<ChatRequest>): Promise<MessageCompletion> => {
-  const ai = await openAI()
+export const chatGPTPrompt = async (options: Partial<ChatRequest>): Promise<AIMessage> => {
+  const ai = openAI()
 
   const mergedOptions = {
     model: openAIModel,
@@ -97,32 +95,33 @@ export const chatGPTPrompt = async (options: Partial<ChatRequest>): Promise<Mess
     }
   }
 
-  const message = response.choices[0].message
-  if (message) {
-    const responseTokens = countTokens(`${message.content}\n${JSON.stringify(message.function_call)}`)
-    const costEstimate = estimatedCost(promptTokens, responseTokens)
+  const message = response.choices[0]?.message
 
-    // update total costs
-    _totalCosts.total.promptTokens += promptTokens
-    _totalCosts.total.responseTokens += responseTokens
-    _totalCosts.total.cost = estimatedCost(_totalCosts.total.promptTokens, _totalCosts.total.responseTokens)
-
-    // update last costs
-    _totalCosts.last.promptTokens = promptTokens
-    _totalCosts.last.responseTokens = responseTokens
-    _totalCosts.last.cost = costEstimate
-
-    return message
+  if (!message) {
+    return {
+      content: `ERROR: I'm sorry, I had an error. Please try again.\n\ncode: unknown_error\n`,
+      role: 'assistant',
+    }
   }
 
-  return {
-    content: `ERROR: I'm sorry, I had an error. Please try again.\n\ncode: unknown_error\n`,
-    role: 'assistant',
-  }
+  const responseTokens = countTokens(`${message.content}\n${JSON.stringify(message.function_call)}`)
+  const costEstimate = estimatedCost(promptTokens, responseTokens)
+
+  // update total costs
+  _totalCosts.total.promptTokens += promptTokens
+  _totalCosts.total.responseTokens += responseTokens
+  _totalCosts.total.cost = estimatedCost(_totalCosts.total.promptTokens, _totalCosts.total.responseTokens)
+
+  // update last costs
+  _totalCosts.last.promptTokens = promptTokens
+  _totalCosts.last.responseTokens = responseTokens
+  _totalCosts.last.cost = costEstimate
+
+  return message
 }
 
 export async function createEmbedding(text: string) {
-  const ai = await openAI()
+  const ai = openAI()
 
   const embeddingsResponse = await ai.embeddings.create({
     input: text,

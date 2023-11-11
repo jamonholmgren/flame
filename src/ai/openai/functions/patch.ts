@@ -1,10 +1,10 @@
-import type { ChatCompletionFunction } from '../../../types'
+import type { FnCall } from '../../../types'
 import { filesystem } from 'gluegun'
 import { uglyDiff } from '../../../utils/uglyDiff'
 
 type PatchInstruction = { insert: string; replace: string }
 
-export const patch: ChatCompletionFunction = {
+export const patch: FnCall = {
   name: 'patch',
   description: `Allows replacing the first matching string in a given file. Make sure to match indentation exactly.`,
   parameters: {
@@ -45,7 +45,7 @@ export const patch: ChatCompletionFunction = {
       const fileContents = await filesystem.readAsync(file, 'utf8')
 
       if (fileContents === undefined) {
-        return { error: `File '${file}' does not exist.` }
+        return { name: 'patch', error: `File '${file}' does not exist.` }
       }
 
       const { diff, replaceIndex } = uglyDiff(file, fileContents, replace, insert)
@@ -66,6 +66,7 @@ export const patch: ChatCompletionFunction = {
     }
 
     return {
+      name: 'patch',
       content: `Patched ${file}`,
       undo: async () => {
         for (let undo of undos) {

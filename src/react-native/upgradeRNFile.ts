@@ -1,5 +1,5 @@
-import type { FileData, MessageCompletion, MessageParam } from '../types'
-import type { CLIOptions, ChatCompletionFunction } from '../types'
+import type { FileData, AIMessage, MessageParam } from '../types'
+import type { CLIOptions, FnCall } from '../types'
 import { filesystem, prompt, print } from 'gluegun'
 import { hide, spin, stop, done } from '../utils/spin'
 import { br } from '../utils/printing'
@@ -74,7 +74,7 @@ export async function upgradeFile({
     spin(`Upgrading ${fileData.path}`)
 
     // We'll let the AI patch files and create files
-    const functions: ChatCompletionFunction[] = [patch, createFile, deleteFile]
+    const functions: FnCall[] = [patch, createFile, deleteFile]
 
     const messages: MessageParam[] = [
       { content: orientation, role: 'system' },
@@ -88,7 +88,7 @@ export async function upgradeFile({
     ]
 
     let aiMessage = options.cacheFile
-      ? await loadCachedResponse<MessageCompletion>(options.cacheFile, fileData.path)
+      ? await loadCachedResponse<AIMessage>(options.cacheFile, fileData.path)
       : undefined
 
     if (aiMessage) {
@@ -106,7 +106,7 @@ export async function upgradeFile({
       if (errorResult.next === 'skip') return { userWantsToExit: false }
 
       if (options.cacheFile) {
-        await saveCachedResponse<MessageCompletion>(options.cacheFile, fileData.path, aiMessage)
+        await saveCachedResponse<AIMessage>(options.cacheFile, fileData.path, aiMessage)
       }
     }
 
