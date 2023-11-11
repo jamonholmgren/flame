@@ -96,7 +96,7 @@ export async function upgradeFile({
       await new Promise((resolve) => setTimeout(resolve, 2500))
       log(`Using cached response for ${fileData.path}`)
     } else {
-      aiMessage = await chatGPTPrompt({ functions, messages, model: 'gpt-4' })
+      aiMessage = await chatGPTPrompt({ functions, messages, model: 'gpt-4-1106-preview' })
 
       if (!aiMessage) return stop('🙈', `No response from AI.`)
 

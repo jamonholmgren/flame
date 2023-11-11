@@ -7,7 +7,7 @@ export async function generateProjectSummary(context: SessionContext) {
   const loadedFile = await loadFile('README.md')
 
   if (loadedFile?.contents) {
-    // Generate a summary using gpt-3.5-turbo
+    // Generate a summary from the README.md file
     const summary = await generateSummary(
       `Use the following README.md contents and file list to generate a summary of the project as few words as possible. Focus on things that are important for a coder to know about the project before they start working on it.`,
       loadedFile.contents + `\n\nHere are all the files in the project:\n\n` + context.files.join('\n'),

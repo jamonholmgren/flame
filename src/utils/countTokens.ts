@@ -12,7 +12,7 @@ export function countTokens(str: string): number {
 /**
  * Returns estimated cost as a string for printing.
  */
-export function estimatedCost(promptTokens: number, responseTokens: number, model = 'gpt-4'): string {
+export function estimatedCost(promptTokens: number, responseTokens: number, model = 'gpt-4-1106-preview'): string {
   if (model === 'gpt-4') {
     // $0.03 / 1K tokens and $0.06 / 1K tokens
     const promptCost = Math.round((promptTokens / 1000) * 0.03 * 100) / 100

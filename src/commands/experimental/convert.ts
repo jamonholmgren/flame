@@ -116,7 +116,7 @@ const command: GluegunCommand = {
 
     try {
       var response = await openai.chat.completions.create({
-        model: 'gpt-4',
+        model: 'gpt-4-1106-preview',
         messages,
         // max_tokens: 3000,
         // temperature: 0,

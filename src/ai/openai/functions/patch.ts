@@ -21,11 +21,12 @@ export const patch: FnCall = {
           properties: {
             replace: {
               type: 'string',
-              description: 'Replace this string with the insert string',
+              description: 'Search for and replace this string with the insert string',
             },
             insert: {
               type: 'string',
-              description: 'Insert this string at the location of the replace string',
+              description:
+                'This is the string that replaces the `replace` string. If just inserting before/after, make sure to include the replace string where it goes.',
             },
           },
         },

@@ -32,7 +32,7 @@ export async function handleSpecialCommand(command: string, context: SessionCont
     )
   } else if (command.startsWith('/load ')) {
     // if the prompt starts with "load ", load a file into the backlog
-    const fileName = command.slice(5)
+    const fileName = command.slice(6)
     const loadedFile = await loadFile(fileName)
 
     if (!loadedFile) {

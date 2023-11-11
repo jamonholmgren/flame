@@ -24,7 +24,7 @@ const context: SessionContext = {
   messages: [],
 }
 
-const MAXIMUM_PROMPT_SIZE = 30 * 1024 // limit to 30k tokens for now
+const MAXIMUM_PROMPT_SIZE = 90 * 1024 // limit to 90k tokens for now
 
 const command: GluegunCommand = {
   name: 'interactive',
@@ -98,7 +98,8 @@ const command: GluegunCommand = {
       const newMessage: MessageParam = { content: result.chatMessage, role: 'user' }
 
       // if the prompt is "exit" or "/exit", exit the loop, we're done!
-      if (['exit', '/exit'].includes(result.chatMessage)) break
+      if (result.chatMessage === 'exit') break
+      if (result.chatMessage.startsWith('/exit')) break
 
       // handle other special commands
       if (await handleSpecialCommand(result.chatMessage, context)) continue
