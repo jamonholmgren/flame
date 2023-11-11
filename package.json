@@ -26,7 +26,7 @@
   ],
   "dependencies": {
     "gluegun": "latest",
-    "openai": "^4.7.1"
+    "openai": "^4.14.2"
   },
   "devDependencies": {
     "@semantic-release/git": "^10.0.1",
