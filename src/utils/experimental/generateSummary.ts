@@ -11,7 +11,7 @@ export async function generateSummary(preprompt: string, text: string): Promise<
 
   const response = await chatGPTPrompt({
     messages: [{ role: 'user', content: prompt }],
-    model: 'gpt-3.5-turbo',
+    model: 'gpt-4-1106-preview',
   })
 
   return response.content || 'Unable to generate summary.'

@@ -10,7 +10,7 @@ export function coloredDiff(fileDiff: string): string {
   const diffLines = fileDiff.split('\n')
   return diffLines
     .map((line) => {
-      if (['---', '+++', 'index'].includes(line.split(' ')[0])) {
+      if (['---', '+++', 'index'].includes(line.split(' ')[0] || '')) {
         // ignore
       } else if (line.startsWith('+')) {
         return green(line)

@@ -1,4 +1,4 @@
-import type { ChatCompletionFunction } from '../../../types'
+import type { FnCall } from '../../../types'
 import { filesystem, print } from 'gluegun'
 
 type CreateFileArgs = {
@@ -6,7 +6,7 @@ type CreateFileArgs = {
   contents: string
 }
 
-export const createFile: ChatCompletionFunction = {
+export const createFile: FnCall = {
   name: 'createFile',
   description: 'Create a file',
   parameters: {
@@ -27,6 +27,7 @@ export const createFile: ChatCompletionFunction = {
     await filesystem.writeAsync(args.path, args.contents)
 
     return {
+      name: 'createFile',
       content: `Created file ${args.path}`,
       changes: print.colors.green(args.contents),
     }

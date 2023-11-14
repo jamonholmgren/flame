@@ -1,50 +1,22 @@
 import type OpenAI from 'openai'
 
-export type ProjectFile = {
-  path: string
-  embeddings?: number[]
-  length?: number
-}
-
-/**
- * Context includes tasks that we are working on, files that we have opened,
- * and previous messages that we have sent.
- *
- * With that information, we can provide a better, more relevant backchat.
- *
- * It gets updated in the flame-history.json file that is created in src/utils/chatHistory.ts.
- */
-export type SmartContext = {
-  // Project context, continually updated
-  project: string // "flame is a gluegun cli that uses AI to modify code"
-
-  // working folder
-  workingFolder: string
-
-  // Files we have loaded
-  files: {
-    [path: string]: ProjectFile
-  }
-
-  // Current file we are working on
-  currentFile?: string
-
-  // Description of current task we are working on
-  currentTask?: string
-
-  // Previous messages we have sent
+export type SessionContext = {
+  cwd: string
+  project: string
+  currentFile: string
+  files: string[]
   messages: MessageParam[]
-
-  // Embeddings for the current task + last several messages
-  currentTaskEmbeddings?: number[]
 }
 
 export type ListFilesOptions = {
   recursive?: boolean
   ignore?: string[]
+  maxDepth?: number
+  currentDepth?: number
 }
 
-export type FunctionCallResult = {
+export type ToolCallResult = {
+  name: string
   content?: string
   error?: string
   undo?: () => Promise<void>
@@ -52,8 +24,8 @@ export type FunctionCallResult = {
   next?: 'resubmit' | 'skip' | 'done'
 }
 
-export type ChatCompletionFunction = FunctionCall & {
-  fn: (args: any, context?: SmartContext) => Promise<FunctionCallResult>
+export type FnCall = FunctionCall & {
+  fn: (args: any, context?: SessionContext) => Promise<ToolCallResult>
 }
 
 export type CLIOptions = {
@@ -77,7 +49,8 @@ export type FileData = {
 }
 
 export type MessageParam = OpenAI.Chat.ChatCompletionMessageParam
-export type MessageCompletion = OpenAI.Chat.Completions.ChatCompletionMessage
+export type SystemMessageParam = OpenAI.Chat.ChatCompletionSystemMessageParam
+export type AIMessage = OpenAI.Chat.Completions.ChatCompletionMessage
 export type FunctionCall = OpenAI.Chat.ChatCompletionCreateParams.Function
 export type ChatRequest = OpenAI.Chat.ChatCompletionCreateParamsNonStreaming
 export type ChatCompletion = OpenAI.Chat.Completions.ChatCompletion

@@ -1,7 +1,7 @@
-import type { ChatCompletionFunction, FunctionCallResult } from '../../../types'
+import type { FnCall, ToolCallResult } from '../../../types'
 import { filesystem } from 'gluegun'
 
-export const readFile: ChatCompletionFunction = {
+export const readFile: FnCall = {
   name: 'readFileAndReportBack',
   description: 'Read a file and report back with the contents',
   parameters: {
@@ -19,11 +19,19 @@ export const readFile: ChatCompletionFunction = {
     const fileExists = await filesystem.existsAsync(args.path)
 
     if (!fileExists) {
-      return { error: `File '${args.path}' does not exist.` }
+      return {
+        name: 'readFileAndReportBack',
+        error: `File '${args.path}' does not exist.`,
+      }
     }
 
-    // We resubmit; the file will be read in the next iteration
-    const returnValue: FunctionCallResult = {
+    // Read the file
+    const content = await filesystem.readAsync(args.path)
+
+    // We resubmit with the file contents
+    const returnValue: ToolCallResult = {
+      name: 'readFileAndReportBack',
+      content,
       next: 'resubmit',
     }
 

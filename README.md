@@ -50,8 +50,8 @@ Note that Flame AI costs a nominal amount of money to run, via [OpenAI's API pri
 
 ## Limitations
 
-- You _must_ have gpt-4 access for Flame AI to be useful. Our experiments with gpt-3.5-turbo have been very underwhelming.
-- **The biggest limitation for FlameAI is the lack of prompt size.** Currently, we're working with gpt-4, which has a token size of 8192 tokens (around 24k characters). This sounds like a lot, but considering a single code file of 200 lines can take up north of 10k characters, it is very limiting. When we have access to gpt-4-32k, we'll be able to do much more. Despite that, we've made impressive progress with the current token size.
+- You _must_ have gpt-4 or gpt-4-1106-preview access for Flame AI to be useful. Our experiments with gpt-3.5-turbo have been very underwhelming.
+- **The biggest limitation for FlameAI is the lack of prompt size.** We're experimenting with gpt-4-1106-preview, which has a token size of 128k tokens. This is a huge improvement over gpt-4 which only had 4k or 8k token size.
 - LLMs are not perfect. They can hallucinate, miss stuff, and be generally weird. We're working on ways to mitigate this, but it's a limitation of current generation AI technology.
 
 ## Contributing, modifying, running locally

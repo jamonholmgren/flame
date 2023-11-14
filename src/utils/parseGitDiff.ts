@@ -30,18 +30,18 @@ export function parseGitDiff(diffString: string): FileData[] {
 
   for (let i = 1; i < fileDiffs.length; i++) {
     // Starting at 1 to skip the initial empty string
-    const fileDiff = fileDiffs[i]
-    if (fileDiffs[i].includes('GIT binary patch\n')) continue
+    const fileDiff = fileDiffs[i]!
+    if (fileDiff.includes('GIT binary patch\n')) continue
 
     const lines = fileDiff.split('\n')
 
     // The first line should contain the file names
-    const match = lines[0].match(/a\/(.+) b\/(.+)/)
+    const match = lines[0]!.match(/a\/(.+) b\/(.+)/)
     if (!match) throw new Error(`Could not parse git diff line: ${lines[0]}`)
 
     const fileName = match[2]
     const currentFile: FileData = {
-      path: fileName,
+      path: fileName || '',
       diff: '',
       change: 'pending',
       error: undefined,

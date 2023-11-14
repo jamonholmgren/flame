@@ -1,10 +1,10 @@
-import type { ChatCompletionFunction } from '../../../types'
+import type { FnCall } from '../../../types'
 import { filesystem } from 'gluegun'
 import { uglyDiff } from '../../../utils/uglyDiff'
 
 type PatchInstruction = { insert: string; replace: string }
 
-export const patch: ChatCompletionFunction = {
+export const patch: FnCall = {
   name: 'patch',
   description: `Allows replacing the first matching string in a given file. Make sure to match indentation exactly.`,
   parameters: {
@@ -21,11 +21,12 @@ export const patch: ChatCompletionFunction = {
           properties: {
             replace: {
               type: 'string',
-              description: 'Replace this string with the insert string',
+              description: 'Search for and replace this string with the insert string',
             },
             insert: {
               type: 'string',
-              description: 'Insert this string at the location of the replace string',
+              description:
+                'This is the string that replaces the `replace` string. If just inserting before/after, make sure to include the replace string where it goes.',
             },
           },
         },
@@ -45,7 +46,7 @@ export const patch: ChatCompletionFunction = {
       const fileContents = await filesystem.readAsync(file, 'utf8')
 
       if (fileContents === undefined) {
-        return { error: `File '${file}' does not exist.` }
+        return { name: 'patch', error: `File '${file}' does not exist.` }
       }
 
       const { diff, replaceIndex } = uglyDiff(file, fileContents, replace, insert)
@@ -66,6 +67,7 @@ export const patch: ChatCompletionFunction = {
     }
 
     return {
+      name: 'patch',
       content: `Patched ${file}`,
       undo: async () => {
         for (let undo of undos) {

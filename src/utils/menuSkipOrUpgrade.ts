@@ -14,7 +14,7 @@ export async function menuSkipOrUpgrade(fileData: FileData): Promise<{ next: 'sk
     ],
   })
 
-  skipFile = skipAnswer['skipFile']
+  skipFile = skipAnswer['skipFile'] || 'upgrade'
 
   if (skipFile === 'skip') {
     fileData.change = 'skipped'

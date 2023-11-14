@@ -1,11 +1,11 @@
-import type { ChatCompletionFunction } from '../../../types'
+import type { FnCall } from '../../../types'
 import { filesystem, print } from 'gluegun'
 
 type DeleteFileArgs = {
   path: string
 }
 
-export const deleteFile: ChatCompletionFunction = {
+export const deleteFile: FnCall = {
   name: 'deleteFile',
   description: 'Delete a file',
   parameters: {
@@ -22,6 +22,7 @@ export const deleteFile: ChatCompletionFunction = {
     await filesystem.removeAsync(args.path)
 
     return {
+      name: 'deleteFile',
       content: `Deleted file ${args.path}`,
       changes: print.colors.red('Deleted file ' + args.path),
     }

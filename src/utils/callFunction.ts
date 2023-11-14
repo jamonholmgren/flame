@@ -1,12 +1,12 @@
 import { print, prompt } from 'gluegun'
-import { ChatCompletionFunction } from '../types'
-import type { FileData, MessageCompletion } from '../types'
+import { FnCall } from '../types'
+import type { FileData, AIMessage } from '../types'
 
 type CallFunctionOptions = {
   functionName: string
   functionArgs: string
-  functions: ChatCompletionFunction[]
-  aiResponse: MessageCompletion
+  functions: FnCall[]
+  aiResponse: AIMessage
   fileData: FileData
 }
 

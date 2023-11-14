@@ -17,7 +17,7 @@
  */
 import { GluegunCommand } from 'gluegun'
 import { openAI } from '../../ai/openai/openai'
-import type { ChatCompletionFunction, MessageParam } from '../../types'
+import type { FnCall, MessageParam } from '../../types'
 import { patch } from '../../ai/openai/functions/patch'
 import { callFunction } from '../../utils/callFunction'
 
@@ -112,11 +112,11 @@ const command: GluegunCommand = {
 
     const openai = await openAI()
 
-    const functions: ChatCompletionFunction[] = [patch]
+    const functions: FnCall[] = [patch]
 
     try {
       var response = await openai.chat.completions.create({
-        model: 'gpt-4',
+        model: 'gpt-4-1106-preview',
         messages,
         // max_tokens: 3000,
         // temperature: 0,
@@ -139,7 +139,13 @@ const command: GluegunCommand = {
     spinner.text = `Writing updated code to ${sourceFile}`
     spinner.start()
 
-    const message = response.choices[0].message
+    const message = response.choices[0]?.message
+
+    if (!message) {
+      print.error('Error or no response from OpenAI')
+      return
+    }
+
     if (message.content) {
       print.error(message.content)
       return
