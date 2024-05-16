@@ -4,7 +4,9 @@ Flame AI is a CLI for interacting with OpenAI and doing codemods and codegen. It
 
 <img alt="Flame AI screenshot" src="https://raw.githubusercontent.com/infinitered/images/main/images/flame-intro.png">
 
-To run Flame, you need Node v18+ installed and have access to an OpenAI [gpt-4 token key](https://platform.openai.com/account/api-keys). If you need access to gpt-4, [here's how to get it](https://help.openai.com/en/articles/7102672-how-can-i-access-gpt-4). Once you get a key, add `OPENAI_API_KEY=...` to your environment variables (i.e., `.zshrc`/`.bashrc`/etc).
+To run Flame, you need Node v18+ installed and have access to an OpenAI [gpt-4 token key](https://platform.openai.com/account/api-keys). If you need access to gpt-4, [here's how to get it](https://help.openai.com/en/articles/7102672-how-can-i-access-gpt-4).
+
+Once you obtain a key, add `OPENAI_API_KEY=...` to your system's environment variables (i.e., `.zshrc`/`.bashrc`/etc).
 
 Flame works via npx:
 
@@ -18,7 +20,7 @@ To see all commands, including some exciting experimental features, check out th
 
 ### Upgrade: React Native
 
-Flame AI's most effective command is for upgrading React Native apps.
+Flame AI's most effective command is for upgrading React Native apps. You can watch Jamon's live demo at React Native EU 2023 on [YouTube]([url](https://youtu.be/8r0qirR3wWY?si=Mn8GZrK5E4UCvKJ3)).
 
 Run this in the root of your React Native app:
 
